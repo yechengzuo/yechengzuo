@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060f">
+<title>自制小游戏 · yechengzuo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --cyan: #00f0ff;
+    --magenta: #ff2ec4;
+    --yellow: #ffe14d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    overflow: hidden;
+    background-color: #05060f;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.06) 1px, transparent 1px),
+      radial-gradient(900px 520px at 15% -10%, rgba(20,40,120,0.55), transparent 60%),
+      radial-gradient(900px 520px at 110% 115%, rgba(120,20,90,0.45), transparent 60%);
+    background-size: 46px 46px, 46px 46px, auto, auto;
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+  }
+
+  .back {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 6;
+    padding: 8px 16px;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    color: #bffcff;
+    text-decoration: none;
+    border: 1px solid rgba(0,240,255,0.6);
+    background: rgba(0,240,255,0.08);
+    text-shadow: 0 0 8px rgba(0,240,255,0.7);
+    transition: all 0.25s ease;
+  }
+
+  .back:hover {
+    color: #ffffff;
+    background: rgba(0,240,255,0.18);
+    box-shadow: 0 0 18px rgba(0,240,255,0.5);
+  }
+
+  main {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 1.25rem;
+  }
+
+  .kicker {
+    margin-bottom: 1.1rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.5em;
+    text-indent: 0.5em;
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,0.6);
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5.5vw, 3.4rem);
+    letter-spacing: 0.18em;
+    text-indent: 0.18em;
+    color: #ffffff;
+    text-shadow:
+      0 0 10px rgba(0,240,255,0.95),
+      0 0 34px rgba(0,240,255,0.55),
+      3px 0 0 rgba(255,46,196,0.5);
+  }
+
+  .sub {
+    margin-top: 1rem;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    letter-spacing: 0.25em;
+    text-indent: 0.25em;
+    color: rgba(160,225,255,0.9);
+  }
+
+  .card {
+    display: block;
+    margin-top: 3rem;
+    width: min(88vw, 430px);
+    padding: 1.4rem 3.4rem 1.4rem 1.8rem;
+    text-decoration: none;
+    position: relative;
+    border: 2px solid var(--cyan);
+    background: rgba(0,240,255,0.05);
+    box-shadow: 0 0 22px rgba(0,240,255,0.28), inset 0 0 22px rgba(0,240,255,0.07);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: var(--magenta);
+    background: rgba(255,46,196,0.07);
+    box-shadow: 0 0 34px rgba(255,46,196,0.45), inset 0 0 26px rgba(255,46,196,0.1);
+    transform: translateY(-3px);
+  }
+
+  .card .g-title {
+    display: block;
+    text-align: left;
+    font-size: clamp(1.35rem, 3.5vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(0,240,255,0.8);
+    transition: text-shadow 0.3s ease;
+  }
+
+  .card:hover .g-title { text-shadow: 0 0 10px rgba(255,46,196,0.8); }
+
+  .card .g-en {
+    display: block;
+    margin-top: 0.55rem;
+    text-align: left;
+    font-size: 0.8rem;
+    letter-spacing: 0.32em;
+    color: rgba(160,225,255,0.9);
+  }
+
+  .card .g-go {
+    position: absolute;
+    right: 1.3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(0,240,255,0.8);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+  }
+
+  .card:hover .g-go {
+    color: var(--magenta);
+    text-shadow: 0 0 12px rgba(255,46,196,0.8);
+  }
+
+  .updating {
+    position: fixed;
+    bottom: 1.8rem;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    text-align: center;
+    font-size: 0.95rem;
+    letter-spacing: 0.4em;
+    text-indent: 0.4em;
+    color: var(--yellow);
+    text-shadow: 0 0 10px rgba(255,225,77,0.7);
+  }
+
+  .dot { display: inline-block; animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<a class="back" href="index.html">← 返回首页</a>
+<main>
+  <p class="kicker">SELF-MADE ARCADE</p>
+  <h1>自制小游戏</h1>
+  <p class="sub">这里陈列着我自己做的小游戏</p>
+  <a class="card" href="game.html">
+    <span class="g-title">霓虹打砖块</span>
+    <span class="g-en">NEON BREAKOUT · 打砖块</span>
+    <span class="g-go">▶</span>
+  </a>
+</main>
+<p class="updating">更多游戏更新中<span class="dot">·</span><span class="dot">·</span><span class="dot">·</span></p>
+</body>
+</html>
