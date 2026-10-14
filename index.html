@@ -180,6 +180,17 @@
     color: rgba(170,225,255,0.85);
   }
 
+  footer .counter {
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    color: var(--green);
+    text-shadow: 0 0 10px rgba(87,255,154,0.65);
+  }
+
+  footer .counter span { color: #bffcff; }
+
   @media (prefers-reduced-motion: reduce) {
     h1 { animation: none; }
     .status::after { animation: none; }
@@ -197,7 +208,10 @@
   <a class="game-btn" href="games.html">自制小游戏</a>
   <p class="hint">NEON ARCADE · 霓虹街机厅</p>
 </main>
-<footer>© 2026 YECHENGZUO · ENTER THE GRID</footer>
+<footer>
+  <p>© 2026 YECHENGZUO · ENTER THE GRID</p>
+  <p class="counter">本站已被访问 <span id="busuanzi_value_site_pv">--</span> 次 · <span id="busuanzi_value_site_uv">--</span> 位访客</p>
+</footer>
 
 <script>
 (function () {
@@ -335,5 +349,6 @@
   setInterval(tick, 1000);
 })();
 </script>
+<script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </body>
 </html>
