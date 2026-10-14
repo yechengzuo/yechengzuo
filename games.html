@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#05060f">
+<meta name="site-version" content="1.6">
 <title>自制小游戏 · yechengzuo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
 <style>
@@ -67,10 +68,16 @@
     z-index: 4;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    overflow-y: auto;
     text-align: center;
     padding: 0 1.25rem;
+  }
+
+  .inner {
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .kicker {
@@ -101,6 +108,15 @@
     color: rgba(160,225,255,0.9);
   }
 
+  .sec-label {
+    margin-top: 2.2rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.5em;
+    text-indent: 0.5em;
+    color: var(--magenta);
+    text-shadow: 0 0 10px rgba(255,46,196,0.6);
+  }
+
   .deck {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -111,6 +127,12 @@
 
   @media (max-width: 760px) {
     .deck { grid-template-columns: 1fr; width: min(88vw, 340px); margin-top: 1.8rem; }
+  }
+
+  .deck.single {
+    grid-template-columns: min(300px, 88vw);
+    justify-content: center;
+    margin-top: 1.3rem;
   }
 
   .card {
@@ -202,6 +224,7 @@
 <div class="scanlines"></div>
 <a class="back" href="index.html">← 返回首页</a>
 <main>
+  <div class="inner">
   <p class="kicker">SELF-MADE ARCADE</p>
   <h1>自制小游戏</h1>
   <p class="sub">这里陈列着我自己做的小游戏</p>
@@ -222,7 +245,16 @@
       <span class="g-go">▶</span>
     </a>
   </div>
+  <p class="sec-label">乐 器</p>
+  <div class="deck single">
+    <a class="card" href="piano.html">
+      <span class="g-title">霓虹钢琴</span>
+      <span class="g-en">NEON PIANO · 键盘弹奏</span>
+      <span class="g-go">▶</span>
+    </a>
+  </div>
+  </div>
 </main>
-<p class="updating">更多游戏更新中<span class="dot">·</span><span class="dot">·</span><span class="dot">·</span></p>
+<p class="updating">更多内容更新中<span class="dot">·</span><span class="dot">·</span><span class="dot">·</span></p>
 </body>
 </html>

@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>绘画小工具 · Neon Sketch</title>
+<style>
+  :root { --cyan: #00f0ff; --magenta: #ff2ec4; --yellow: #ffe14d; --green: #57ff9a; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    overflow: hidden;
+    background: #04050c;
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- 工具栏 ---------- */
+  .toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(6,10,22,.92);
+    border-bottom: 1px solid rgba(0,240,255,.25);
+    box-shadow: 0 4px 24px rgba(0,0,0,.5);
+    z-index: 10;
+  }
+
+  .toolbar a.back {
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: .08em;
+    color: #bffcff;
+    text-decoration: none;
+    border: 1px solid rgba(0,240,255,.5);
+    background: rgba(0,240,255,.06);
+    text-shadow: 0 0 8px rgba(0,240,255,.6);
+    transition: all .25s ease;
+    white-space: nowrap;
+  }
+  .toolbar a.back:hover { color: #fff; background: rgba(0,240,255,.16); box-shadow: 0 0 18px rgba(0,240,255,.5); }
+
+  .toolbar .sep {
+    width: 1px;
+    height: 26px;
+    background: rgba(120,200,255,.25);
+  }
+
+  .swatches { display: flex; gap: 8px; align-items: center; }
+
+  .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.18);
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .swatch.selected {
+    border-color: #fff;
+    transform: scale(1.18);
+    box-shadow: 0 0 14px currentColor;
+  }
+
+  .size-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: .1em;
+    color: rgba(160,225,255,.9);
+  }
+
+  input[type=range] {
+    width: 110px;
+    accent-color: var(--cyan);
+    cursor: pointer;
+  }
+
+  .tool-btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    letter-spacing: .1em;
+    color: #bffcff;
+    background: rgba(0,240,255,.05);
+    border: 1px solid rgba(0,240,255,.4);
+    cursor: pointer;
+    transition: all .2s ease;
+    white-space: nowrap;
+  }
+  .tool-btn:hover { background: rgba(0,240,255,.14); box-shadow: 0 0 14px rgba(0,240,255,.4); }
+  .tool-btn.on {
+    color: #fff;
+    background: rgba(255,46,196,.18);
+    border-color: rgba(255,46,196,.7);
+    box-shadow: 0 0 14px rgba(255,46,196,.5);
+  }
+  .tool-btn.save {
+    color: #ffe14d;
+    border-color: rgba(255,225,77,.5);
+    background: rgba(255,225,77,.06);
+  }
+  .tool-btn.save:hover { background: rgba(255,225,77,.16); box-shadow: 0 0 14px rgba(255,225,77,.45); }
+  .tool-btn.danger:hover { background: rgba(255,92,122,.16); border-color: rgba(255,92,122,.7); box-shadow: 0 0 14px rgba(255,92,122,.5); }
+
+  .hint-line {
+    flex: 1 1 100%;
+    font-size: 11px;
+    letter-spacing: .14em;
+    color: rgba(150,225,255,.6);
+  }
+  @media (min-width: 900px) {
+    .hint-line { flex: 1 1 auto; text-align: right; }
+  }
+
+  /* ---------- 画布 ---------- */
+  .canvas-wrap {
+    flex: 1 1 auto;
+    position: relative;
+    min-height: 0;
+  }
+
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <a class="back" href="index.html">← 返回</a>
+  <div class="sep"></div>
+  <div class="swatches" id="swatches"></div>
+  <div class="sep"></div>
+  <div class="size-wrap">
+    粗细 <input type="range" id="size" min="2" max="40" value="10"> <span id="sizeVal">10</span>
+  </div>
+  <div class="sep"></div>
+  <button class="tool-btn" id="eraser">橡皮</button>
+  <button class="tool-btn" id="undo">撤销 (U)</button>
+  <button class="tool-btn danger" id="clear">清空</button>
+  <button class="tool-btn save" id="save">💾 保存 PNG</button>
+  <span class="hint-line">鼠标 / 手指作画 · 快捷键 U 撤销</span>
+</div>
+<div class="canvas-wrap">
+  <canvas id="pad"></canvas>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const COLORS = ['#00f0ff', '#ff2ec4', '#ffe14d', '#57ff9a', '#a78bfa', '#ffffff', '#ff9d5c'];
+  const cvs = document.getElementById('pad');
+  const ctx = cvs.getContext('2d');
+  const wrap = document.querySelector('.canvas-wrap');
+
+  /* 离屏画布：所有笔迹都画在这里，主画布只负责呈现 */
+  let off = document.createElement('canvas');
+  let offCtx = off.getContext('2d');
+  let W = 0, H = 0;
+
+  let color = COLORS[0];
+  let size = 10;
+  let eraser = false;
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+  const snapshots = [];
+
+  /* ---------- 尺寸 ---------- */
+  function resize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (w === 0 || h === 0) return;
+    const old = document.createElement('canvas');
+    old.width = off.width; old.height = off.height;
+    old.getContext('2d').drawImage(off, 0, 0);
+
+    W = w; H = h;
+    cvs.width = w; cvs.height = h;
+    off.width = w; off.height = h;
+    offCtx.fillStyle = '#04050c';
+    offCtx.fillRect(0, 0, w, h);
+    if (old.width > 0) offCtx.drawImage(old, 0, 0, w, h);
+    render();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(off, 0, 0);
+  }
+
+  /* ---------- 调色板 ---------- */
+  const swatchBox = document.getElementById('swatches');
+  const swatchEls = [];
+  COLORS.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.style.background = c;
+    el.style.color = c;               // 用于选中光晕 (currentColor)
+    el.addEventListener('click', () => {
+      color = c;
+      eraser = false;
+      document.getElementById('eraser').classList.remove('on');
+      swatchEls.forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+    swatchBox.appendChild(el);
+    swatchEls.push(el);
+  });
+  swatchEls[0].classList.add('selected');
+
+  /* ---------- 粗细 ---------- */
+  const sizeInput = document.getElementById('size');
+  const sizeVal = document.getElementById('sizeVal');
+  sizeInput.addEventListener('input', () => {
+    size = Number(sizeInput.value);
+    sizeVal.textContent = String(size);
+  });
+
+  /* ---------- 按钮 ---------- */
+  const eraserBtn = document.getElementById('eraser');
+  eraserBtn.addEventListener('click', () => {
+    eraser = !eraser;
+    eraserBtn.classList.toggle('on', eraser);
+    if (eraser) swatchEls.forEach(s => s.classList.remove('selected'));
+  });
+
+  document.getElementById('undo').addEventListener('click', undo);
+  document.getElementById('clear').addEventListener('click', () => {
+    snap();
+    offCtx.fillStyle = '#04050c';
+    offCtx.fillRect(0, 0, W, H);
+    render();
+  });
+  document.getElementById('save').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.download = 'neon-drawing.png';
+    a.href = off.toDataURL('image/png');
+    a.click();
+  });
+
+  function snap() {
+    snapshots.push(offCtx.getImageData(0, 0, W, H));
+    if (snapshots.length > 25) snapshots.shift();
+  }
+  function undo() {
+    const img = snapshots.pop();
+    if (!img) return;
+    offCtx.putImageData(img, 0, 0);
+    render();
+  }
+
+  /* ---------- 画笔参数 ---------- */
+  function applyBrush() {
+    offCtx.globalCompositeOperation = eraser ? 'destination-out' : 'source-over';
+    offCtx.strokeStyle = color;
+    offCtx.shadowColor = eraser ? 'transparent' : color;
+    offCtx.shadowBlur = eraser ? 0 : size * 1.6;
+    offCtx.lineCap = 'round';
+    offCtx.lineJoin = 'round';
+    offCtx.lineWidth = eraser ? size * 2.4 : size;
+  }
+
+  /* ---------- 绘制 ---------- */
+  function pos(e) {
+    const r = cvs.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  cvs.addEventListener('pointerdown', e => {
+    drawing = true;
+    cvs.setPointerCapture(e.pointerId);
+    const p = pos(e);
+    lastX = p.x; lastY = p.y;
+    snap();
+    applyBrush();
+    offCtx.beginPath();
+    offCtx.moveTo(p.x, p.y);
+    offCtx.lineTo(p.x + 0.01, p.y + 0.01);  // 点一下也能画出一个点
+    offCtx.stroke();
+    render();
+    e.preventDefault();
+  });
+
+  cvs.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    const p = pos(e);
+    applyBrush();
+    offCtx.beginPath();
+    offCtx.moveTo(lastX, lastY);
+    offCtx.lineTo(p.x, p.y);
+    offCtx.stroke();
+    lastX = p.x; lastY = p.y;
+    render();
+    e.preventDefault();
+  });
+
+  ['pointerup', 'pointercancel'].forEach(evt =>
+    cvs.addEventListener(evt, () => { drawing = false; })
+  );
+
+  cvs.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ---------- 快捷键 ---------- */
+  window.addEventListener('keydown', e => {
+    if (e.code === 'KeyU') undo();
+    if (e.code === 'KeyC') document.getElementById('clear').click();
+  });
+})();
+</script>
+</body>
+</html>

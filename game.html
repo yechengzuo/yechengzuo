@@ -147,6 +147,104 @@ function beep(freq, dur = 0.07, type = 'square', vol = 0.05, slide = 0) {
   } catch (e) { /* 静音也没关系 */ }
 }
 
+/* ---------------------------------------------------------------- 背景音乐 (WebAudio 节奏引擎) */
+const Music = { on: localStorage.getItem('bgm') !== 'off', step: 0, nextTime: 0, timer: null, ctx: null, master: null };
+const MUSIC_P = {
+  bpm: 116, root: 110, steps: 16,
+  kick: [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+  hat:  [0,1,0,2,0,1,0,2,0,1,0,2,0,1,0,2],
+  bass: [0,null,0,null,3,null,0,null,5,null,0,null,7,null,5,null],
+  arp:  [12,null,15,null,19,null,15,null,12,null,15,null,19,null,22,null],
+};
+let noiseBuf = null;
+
+function musicStart() {
+  if (Music.ctx) {
+    if (Music.ctx.state === 'suspended') Music.ctx.resume();
+    return;
+  }
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    Music.ctx = ac;
+    Music.master = ac.createGain();
+    Music.master.gain.value = 0.55;
+    Music.master.connect(ac.destination);
+    const len = Math.floor(ac.sampleRate * 0.5);
+    noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    Music.step = 0;
+    Music.nextTime = ac.currentTime + 0.08;
+    Music.timer = setInterval(musicTick, 25);
+  } catch (e) { /* 无音频也没关系 */ }
+}
+
+function musicToggle() {
+  Music.on = !Music.on;
+  localStorage.setItem('bgm', Music.on ? 'on' : 'off');
+}
+
+function musicTick() {
+  if (!Music.ctx) return;
+  const ac = Music.ctx;
+  while (Music.nextTime < ac.currentTime + 0.12) {
+    musicStep(Music.step, Music.nextTime);
+    Music.nextTime += 60 / MUSIC_P.bpm / 4;
+    Music.step = (Music.step + 1) % MUSIC_P.steps;
+  }
+}
+
+function musicStep(i, t) {
+  const p = MUSIC_P, ac = Music.ctx;
+  if (!Music.on) return;
+  const s = i % p.steps;
+  if (p.kick[s]) musicKick(t);
+  if (p.hat[s]) musicHat(t, p.hat[s]);
+  const b = p.bass[i % p.bass.length];
+  if (b != null) musicBass(t, p.root * Math.pow(2, b / 12) / 2);
+  const a = p.arp[i % p.arp.length];
+  if (a != null) musicArp(t, p.root * Math.pow(2, a / 12));
+}
+
+function musicKick(t) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+  o.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.15);
+}
+
+function musicHat(t, accent) {
+  const ac = Music.ctx, src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
+  src.buffer = noiseBuf;
+  f.type = 'highpass'; f.frequency.value = 7000;
+  g.gain.setValueAtTime(accent === 2 ? 0.09 : 0.05, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+  src.connect(f); f.connect(g); g.connect(Music.master);
+  src.start(t); src.stop(t + 0.05);
+}
+
+function musicBass(t, freq) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  f.type = 'lowpass'; f.frequency.value = 420;
+  g.gain.setValueAtTime(0.16, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(f); f.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.24);
+}
+
+function musicArp(t, freq) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'triangle'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.07, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  o.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.16);
+}
+
 /* ---------------------------------------------------------------- 初始化 */
 function buildBricks(levelIdx) {
   const pattern = LEVELS[levelIdx % LEVELS.length];
@@ -203,6 +301,7 @@ function newGame() {
   game.lives = 3;
   startLevel(0, true);
   game.toast = null;
+  musicStart();
 }
 
 /* ---------------------------------------------------------------- 输入 */
@@ -226,10 +325,14 @@ window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Space' || e.code === 'Enter') primaryAction();
   if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
+  if (e.code === 'KeyM') { musicToggle(); showToast(Music.on ? '音乐开' : '音乐关', '#38e1ff'); }
   if (e.code === 'KeyR') newGame();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-window.addEventListener('blur', () => { if (game.state === 'playing') game.state = 'paused'; });
+window.addEventListener('blur', () => {
+  if (game.state === 'playing') game.state = 'paused';
+  if (Music.ctx && Music.ctx.state === 'running') Music.ctx.suspend();
+});
 
 function primaryAction() {
   if (game.state === 'menu' || game.state === 'gameover') { newGame(); return; }
@@ -249,8 +352,13 @@ function primaryAction() {
 }
 
 function togglePause() {
-  if (game.state === 'playing') game.state = 'paused';
-  else if (game.state === 'paused') game.state = 'playing';
+  if (game.state === 'playing') {
+    game.state = 'paused';
+    if (Music.ctx && Music.ctx.state === 'running') Music.ctx.suspend();
+  } else if (game.state === 'paused') {
+    game.state = 'playing';
+    if (Music.ctx && Music.ctx.state === 'suspended') Music.ctx.resume();
+  }
 }
 
 /* ---------------------------------------------------------------- 特效 */
@@ -676,6 +784,12 @@ function drawHUD() {
   const by = H - 26;
   if (game.wideTimer > 0) bx = drawStatusChip(bx, by, '加宽', game.wideTimer, POWERUPS.wide.color);
   if (game.slowTimer > 0) drawStatusChip(bx, by, '减速', game.slowTimer, POWERUPS.slow.color);
+
+  // 音乐状态
+  ctx.textAlign = 'right';
+  ctx.fillStyle = Music.on ? 'rgba(0,240,255,.9)' : 'rgba(150,170,200,.45)';
+  ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(Music.on ? '♪ 音乐开 (M)' : '♪ 音乐关 (M)', W - 40, H - 26);
   ctx.restore();
 }
 
@@ -748,6 +862,7 @@ function drawMenu() {
 
   subText('鼠标或手指拖动控制挡板 · ← → 也可操作', 452, 'rgba(190,215,250,.7)', 17);
   subText('接住掉落的道具：三球 / 加宽 / 减速 / 加命', 484, 'rgba(190,215,250,.5)', 16);
+  subText('按 M 键开关背景音乐', 516, 'rgba(190,215,250,.5)', 16);
   subText('历史最高：' + highScore, 540, 'rgba(125,255,176,.75)', 16);
 }
 
