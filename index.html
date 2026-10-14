@@ -125,6 +125,35 @@
     to { opacity: 1; }
   }
 
+  /* 通往霓虹小游戏屋的柔软入口 */
+  .game-link {
+    position: fixed;
+    bottom: 5.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 0.7rem 1.7rem;
+    border-radius: 999px;
+    font-size: clamp(0.85rem, 1.8vw, 1rem);
+    letter-spacing: 0.2em;
+    color: var(--text-soft);
+    background: rgba(255, 248, 238, 0.07);
+    border: 1px solid rgba(255, 248, 238, 0.22);
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    animation: fadeIn 2.5s ease 3.4s forwards;
+    transition: color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
+  }
+
+  .game-link:hover {
+    color: var(--text-main);
+    border-color: rgba(255, 248, 238, 0.5);
+    box-shadow: 0 0 28px rgba(255, 233, 168, 0.28);
+    transform: translateX(-50%) translateY(-2px);
+  }
+
   footer {
     position: fixed;
     bottom: 2.2rem;
@@ -142,7 +171,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .breathe, .breathe::after { animation: none; opacity: 0.5; }
-    h1 .char, .subline, .clock, footer { animation-duration: 0.01s; animation-delay: 0s; }
+    h1 .char, .subline, .clock, .game-link, footer { animation-duration: 0.01s; animation-delay: 0s; }
   }
 </style>
 </head>
@@ -155,6 +184,7 @@
   <p class="subline" id="subline"></p>
   <p class="clock" id="clock"></p>
 </main>
+<a class="game-link" href="game.html">✦ 霓虹打砖块 · 玩一局</a>
 <footer>这里什么都没有 · 只有风和光 · 慢慢呼吸</footer>
 
 <script>
