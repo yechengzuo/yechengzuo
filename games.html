@@ -101,11 +101,22 @@
     color: rgba(160,225,255,0.9);
   }
 
+  .deck {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.1rem;
+    width: min(92vw, 880px);
+    margin-top: 2.6rem;
+  }
+
+  @media (max-width: 760px) {
+    .deck { grid-template-columns: 1fr; width: min(88vw, 340px); margin-top: 1.8rem; }
+  }
+
   .card {
     display: block;
-    margin-top: 3rem;
-    width: min(88vw, 430px);
-    padding: 1.4rem 3.4rem 1.4rem 1.8rem;
+    width: 100%;
+    padding: 1.2rem 2.8rem 1.2rem 1.4rem;
     text-decoration: none;
     position: relative;
     border: 2px solid var(--cyan);
@@ -124,9 +135,9 @@
   .card .g-title {
     display: block;
     text-align: left;
-    font-size: clamp(1.35rem, 3.5vw, 1.8rem);
+    font-size: clamp(1.15rem, 2.6vw, 1.45rem);
     font-weight: 700;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.1em;
     color: #ffffff;
     text-shadow: 0 0 10px rgba(0,240,255,0.8);
     transition: text-shadow 0.3s ease;
@@ -138,17 +149,17 @@
     display: block;
     margin-top: 0.55rem;
     text-align: left;
-    font-size: 0.8rem;
-    letter-spacing: 0.32em;
+    font-size: 0.7rem;
+    letter-spacing: 0.24em;
     color: rgba(160,225,255,0.9);
   }
 
   .card .g-go {
     position: absolute;
-    right: 1.3rem;
+    right: 0.9rem;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: var(--cyan);
     text-shadow: 0 0 12px rgba(0,240,255,0.8);
     transition: color 0.3s ease, text-shadow 0.3s ease;
@@ -194,11 +205,23 @@
   <p class="kicker">SELF-MADE ARCADE</p>
   <h1>自制小游戏</h1>
   <p class="sub">这里陈列着我自己做的小游戏</p>
-  <a class="card" href="game.html">
-    <span class="g-title">霓虹打砖块</span>
-    <span class="g-en">NEON BREAKOUT · 打砖块</span>
-    <span class="g-go">▶</span>
-  </a>
+  <div class="deck">
+    <a class="card" href="game.html">
+      <span class="g-title">霓虹打砖块</span>
+      <span class="g-en">NEON BREAKOUT · 打砖块</span>
+      <span class="g-go">▶</span>
+    </a>
+    <a class="card" href="snake.html">
+      <span class="g-title">霓虹贪吃蛇</span>
+      <span class="g-en">NEON SNAKE · 贪吃蛇</span>
+      <span class="g-go">▶</span>
+    </a>
+    <a class="card" href="shooter.html">
+      <span class="g-title">霓虹太空射击</span>
+      <span class="g-en">NEON STRIKER · 弹幕射击</span>
+      <span class="g-go">▶</span>
+    </a>
+  </div>
 </main>
 <p class="updating">更多游戏更新中<span class="dot">·</span><span class="dot">·</span><span class="dot">·</span></p>
 </body>
