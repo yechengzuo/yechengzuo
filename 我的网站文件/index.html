@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060f">
+<meta name="site-version" content="1.7">
+<title>yechengzuo 的个人网站</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --cyan: #00f0ff;
+    --magenta: #ff2ec4;
+    --yellow: #ffe14d;
+    --green: #57ff9a;
+    --bg: #05060f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    overflow: hidden;
+    background: var(--bg);
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+  }
+
+  /* 扫描线 + CRT 暗角，增强赛博质感 */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 3px);
+  }
+
+  .crt {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background: radial-gradient(ellipse at center, transparent 58%, rgba(2,4,12,0.6) 100%);
+  }
+
+  main {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 1.25rem;
+  }
+
+  .kicker {
+    margin-bottom: 1.5rem;
+    font-size: clamp(0.75rem, 1.8vw, 0.95rem);
+    letter-spacing: 0.55em;
+    text-indent: 0.55em; /* 抵消最后字符的字距，保持视觉居中 */
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(0,240,255,0.75);
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 6vw, 3.9rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    line-height: 1.55;
+    color: #ffffff;
+    /* 青/品红双色错位投影，霓虹灯管质感 */
+    text-shadow:
+      0 0 10px rgba(0,240,255,0.95),
+      0 0 34px rgba(0,240,255,0.55),
+      3px 0 0 rgba(255,46,196,0.55),
+      -3px 0 0 rgba(0,240,255,0.5);
+    animation: glitch 5s infinite;
+  }
+
+  h1 .name { color: #bffcff; }
+
+  /* 周期性毛刺：多数时间正常，短暂瞬间错位 */
+  @keyframes glitch {
+    0%, 90.9%, 100% { transform: none; clip-path: none; }
+    91%   { transform: translate(-3px, 1px) skewX(1.5deg);  clip-path: inset(8% 0 64% 0); }
+    92%   { transform: translate(3px, -1px) skewX(-1deg);   clip-path: inset(46% 0 28% 0); }
+    93%   { transform: translate(-2px, 0);                  clip-path: inset(72% 0 6% 0); }
+    94%   { transform: translate(2px, 1px) skewX(0.5deg);   clip-path: inset(30% 0 50% 0); }
+    95%   { transform: none; clip-path: none; }
+  }
+
+  .status {
+    margin-top: 2.2rem;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: clamp(0.82rem, 1.9vw, 1rem);
+    letter-spacing: 0.14em;
+    color: var(--green);
+    text-shadow: 0 0 10px rgba(87,255,154,0.7);
+  }
+
+  .status::after {
+    content: "▌";
+    margin-left: 2px;
+    color: var(--green);
+    animation: blink 1s steps(2) infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .game-btn {
+    position: relative;
+    display: inline-block;
+    margin-top: 3rem;
+    padding: 1.05rem 2.8rem;
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-indent: 0.28em;
+    color: #bffcff;
+    background: rgba(0,240,255,0.06);
+    border: 2px solid var(--cyan);
+    text-decoration: none;
+    text-shadow: 0 0 8px rgba(0,240,255,0.8);
+    box-shadow: 0 0 18px rgba(0,240,255,0.45), inset 0 0 18px rgba(0,240,255,0.12);
+    transition: all 0.3s ease;
+  }
+
+  /* HUD 四角括号 */
+  .game-btn::before, .game-btn::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--magenta);
+    filter: drop-shadow(0 0 4px rgba(255,46,196,0.8));
+  }
+  .game-btn::before { top: -7px; left: -7px; border-right: none; border-bottom: none; }
+  .game-btn::after { bottom: -7px; right: -7px; border-left: none; border-top: none; }
+
+  .game-btn:hover {
+    color: #ffffff;
+    background: rgba(0,240,255,0.16);
+    box-shadow: 0 0 36px rgba(0,240,255,0.85), inset 0 0 26px rgba(0,240,255,0.28);
+    transform: translateY(-2px);
+  }
+  .game-btn:active { transform: translateY(0); }
+
+  /* 右上角：更新公告入口 */
+  .news-link {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 4;
+    padding: 8px 16px;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: var(--yellow);
+    text-decoration: none;
+    border: 1px solid rgba(255,225,77,0.5);
+    background: rgba(255,225,77,0.06);
+    text-shadow: 0 0 8px rgba(255,225,77,0.6);
+    transition: all 0.25s ease;
+  }
+
+  .news-link:hover {
+    color: #ffffff;
+    background: rgba(255,225,77,0.16);
+    box-shadow: 0 0 18px rgba(255,225,77,0.5);
+  }
+
+  @media (max-width: 640px) {
+    .news-link { top: 12px; right: 12px; padding: 6px 12px; font-size: 12px; }
+  }
+
+  .hint {
+    margin-top: 1.4rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    color: rgba(150,225,255,0.9);
+    text-shadow: 0 0 8px rgba(0,240,255,0.55);
+  }
+
+  footer {
+    position: fixed;
+    bottom: 1.6rem;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    text-align: center;
+    font-size: 0.78rem;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+    color: rgba(170,225,255,0.85);
+  }
+
+  footer .counter {
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    color: var(--green);
+    text-shadow: 0 0 10px rgba(87,255,154,0.65);
+  }
+
+  footer .counter span { color: #bffcff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    h1 { animation: none; }
+    .status::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="scanlines"></div>
+<div class="crt"></div>
+<a class="news-link" href="changelog.html">✧ 更新公告</a>
+<main>
+  <p class="kicker">WELCOME TO YECHENGZUO'S WEBSITE</p>
+  <h1>欢迎来到<span class="name">yechengzuo</span>的个人网站</h1>
+  <p class="status" id="status"></p>
+  <a class="game-btn" href="games.html">自制小游戏</a>
+  <p class="hint">NEON ARCADE · 霓虹街机厅</p>
+</main>
+<footer>
+  <p>© 2026 YECHENGZUO · ENTER THE GRID · v1.7</p>
+  <p class="counter">本站已被访问 <span id="busuanzi_value_site_pv">--</span> 次 · <span id="busuanzi_value_site_uv">--</span> 位访客</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("bg");
+  const ctx = canvas.getContext("2d");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let W = 0, H = 0;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  /* 数字尘埃：缓慢上浮的霓虹像素点 */
+  const DUST_COLORS = ["0,240,255", "255,46,196", "87,255,154", "255,225,77"];
+  const dustCount = window.innerWidth < 640 ? 42 : 80;
+  const dust = [];
+  for (let i = 0; i < dustCount; i++) {
+    dust.push({
+      x: Math.random(),
+      y: Math.random(),
+      s: 0.8 + Math.random() * 1.8,
+      sp: 0.012 + Math.random() * 0.03,
+      ph: Math.random() * 6.28,
+      c: DUST_COLORS[(Math.random() * DUST_COLORS.length) | 0],
+      a: 0.3 + Math.random() * 0.5
+    });
+  }
+
+  /* 随机出现的信号干扰横条 */
+  let glitchBar = null;
+  let nextGlitch = 3 + Math.random() * 6;
+
+  function drawGlow() {
+    const g1 = ctx.createRadialGradient(W * 0.15, H * 0.12, 0, W * 0.15, H * 0.12, W * 0.6);
+    g1.addColorStop(0, "rgba(0,240,255,0.10)");
+    g1.addColorStop(1, "rgba(0,240,255,0)");
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, W, H);
+
+    const g2 = ctx.createRadialGradient(W * 0.85, H * 0.9, 0, W * 0.85, H * 0.9, W * 0.65);
+    g2.addColorStop(0, "rgba(255,46,196,0.09)");
+    g2.addColorStop(1, "rgba(255,46,196,0)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawGrid(t) {
+    const horizon = H * 0.62;
+    const cx = W / 2;
+    const spread = W / 2.2;
+    ctx.lineWidth = 1;
+
+    /* 向灭点汇聚的竖线 */
+    ctx.strokeStyle = "rgba(0,240,255,0.38)";
+    for (let i = -14; i <= 14; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * (spread / 14) * 0.18, horizon);
+      ctx.lineTo(cx + i * (spread / 14) * 1.6, H);
+      ctx.stroke();
+    }
+
+    /* 朝观众流动的横线 */
+    ctx.strokeStyle = "rgba(255,46,196,0.34)";
+    const phase = (t * 0.13) % 1;
+    for (let k = 0; k < 9; k++) {
+      const p = (k + phase) / 9;
+      const y = horizon + Math.pow(p, 2.1) * (H - horizon);
+      ctx.globalAlpha = p * 0.8 + 0.1;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDust(t) {
+    for (const d of dust) {
+      let y = d.y - t * d.sp;
+      y = y < 0 ? y + Math.ceil(-y) : y;
+      const yy = y % 1;
+      const s = d.s * (0.7 + 0.3 * Math.sin(t * 2 + d.ph));
+      ctx.fillStyle = "rgba(" + d.c + "," + d.a.toFixed(3) + ")";
+      ctx.fillRect(d.x * W, yy * H, s, s);
+    }
+  }
+
+  function drawGlitchBar(t) {
+    if (!glitchBar && t > nextGlitch) {
+      glitchBar = { y: Math.random() * H, h: 6 + Math.random() * 14, t0: t, dur: 0.12 + Math.random() * 0.14 };
+      nextGlitch = t + 4 + Math.random() * 7;
+    }
+    if (!glitchBar) return;
+    const el = t - glitchBar.t0;
+    if (el > glitchBar.dur) { glitchBar = null; return; }
+    const a = 1 - el / glitchBar.dur;
+    ctx.fillStyle = "rgba(0,240,255," + (0.12 * a).toFixed(3) + ")";
+    ctx.fillRect(0, glitchBar.y, W, glitchBar.h);
+    ctx.fillStyle = "rgba(255,46,196," + (0.10 * a).toFixed(3) + ")";
+    ctx.fillRect(0, glitchBar.y + 4, W, glitchBar.h);
+  }
+
+  function frame(now) {
+    const t = now / 1000;
+    ctx.clearRect(0, 0, W, H);
+    drawGlow();
+    drawGrid(t);
+    drawDust(t);
+    if (!reduced) {
+      drawGlitchBar(t);
+      requestAnimationFrame(frame);
+    }
+  }
+  frame(performance.now()); /* 动效偏好为“减少动态”时只绘制一帧静态画面 */
+
+  /* 状态行：系统在线 + 实时时钟 */
+  const statusEl = document.getElementById("status");
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function tick() {
+    const d = new Date();
+    statusEl.textContent = "> 系统在线 SYSTEM ONLINE · " +
+      pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+<script>
+(function () {
+  /* 自动更新检测：每分钟自查一次线上版本，发现新版就自动刷新，省去手动 Ctrl+F5 */
+  var VER = "1.7";
+  function check() {
+    fetch("index.html?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var m = html.match(/site-version" content="([^"]+)"/);
+        if (m && m[1] !== VER) location.reload();
+      })
+      .catch(function () { /* 网络抖动时静默跳过 */ });
+  }
+  setInterval(check, 60 * 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) check();
+  });
+})();
+</script>
+<script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+</body>
+</html>

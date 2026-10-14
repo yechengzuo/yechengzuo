@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>霓虹打砖块 · Neon Breakout</title>
+<style>
+  html,body{
+    margin:0;height:100%;overflow:hidden;
+    background:radial-gradient(1200px 800px at 50% -10%, #16204a 0%, #0a0e1c 45%, #05070f 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #wrap{width:min(96vw, calc(94vh * 1.5));position:relative;}
+  canvas{
+    width:100%;height:auto;display:block;border-radius:18px;
+    touch-action:none;cursor:none;
+    box-shadow:0 0 0 1px rgba(120,180,255,.18), 0 30px 80px -20px rgba(0,200,255,.35), 0 0 120px rgba(90,120,255,.18);
+  }
+  #home-link{
+    position:fixed;top:14px;left:14px;z-index:10;
+    padding:7px 14px;border-radius:999px;
+    font-size:13px;letter-spacing:.06em;color:#9be8ff;
+    background:rgba(10,18,38,.55);border:1px solid rgba(120,200,255,.35);
+    text-decoration:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    transition:background .25s,box-shadow .25s,color .25s;
+  }
+  #home-link:hover{background:rgba(20,40,70,.75);box-shadow:0 0 18px rgba(56,225,255,.35);color:#dff4ff;}
+  @media (max-height:520px){#home-link{top:8px;left:8px;padding:4px 10px;font-size:12px;opacity:.8;}}
+</style>
+</head>
+<body>
+<a id="home-link" href="games.html">← 返回首页</a>
+<div id="wrap"><canvas id="game" width="960" height="640"></canvas></div>
+<script>
+(() => {
+'use strict';
+
+/* ---------------------------------------------------------------- 基础工具 */
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+const W = cvs.width, H = cvs.height;
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const rand = (a, b) => a + Math.random() * (b - a);
+const TAU = Math.PI * 2;
+
+function rr(c, x, y, w, h, r) {
+  r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+/* ---------------------------------------------------------------- 常量配置 */
+const HS_KEY = 'neon-breakout-hs';
+let highScore = Number(localStorage.getItem(HS_KEY) || 0) || 0;
+
+const BRICK = {
+  1: ['#38e1ff', '#0b8fc4'],
+  2: ['#a78bfa', '#5b3fd6'],
+  3: ['#ff7ac4', '#c026a3'],
+  4: ['#ffd166', '#dd8a12'],
+};
+const STEEL = ['#9fb3c8', '#4a5b6e'];
+
+const PADDLE_Y = H - 64;
+const PADDLE_H = 16;
+const BASE_PADDLE_W = 132;
+const BALL_R = 8;
+
+const POWERUPS = {
+  multi: { color: '#ff7ac4', label: '3', text: '三球' },
+  wide:  { color: '#38e1ff', label: '↔', text: '加宽' },
+  slow:  { color: '#a78bfa', label: '≈', text: '减速' },
+  life:  { color: '#7dffb0', label: '♥', text: '加命' },
+};
+const POWER_KEYS = ['multi', 'wide', 'slow', 'life'];
+
+/* 关卡：数字 = 砖块血量，S = 钢砖（打不碎），. = 空 */
+const LEVELS = [
+  [
+    '11111111111',
+    '22222222222',
+    '33333333333',
+    '22222222222',
+  ],
+  [
+    '33333333333',
+    '2.2.2.2.2.2',
+    '11111111111',
+    '.S.S.S.S.S.',
+    '22222222222',
+  ],
+  [
+    '.....1.....',
+    '....222....',
+    '...33333...',
+    '..SS444SS..',
+    '.111111111.',
+    '...44444...',
+  ],
+];
+
+/* ---------------------------------------------------------------- 游戏状态 */
+const game = {
+  state: 'menu',          // menu | ready | playing | paused | levelclear | gameover
+  score: 0,
+  lives: 3,
+  level: 0,
+  bricks: [],
+  balls: [],
+  powerups: [],
+  particles: [],
+  shake: 0,
+  time: 0,
+  wideTimer: 0,
+  slowTimer: 0,
+  toast: null,            // {text, color, life}
+  flashAlpha: 0,
+};
+
+const paddle = {
+  x: W / 2, y: PADDLE_Y, w: BASE_PADDLE_W, target: W / 2, vx: 0,
+};
+
+let baseSpeed = 400;
+
+/* ---------------------------------------------------------------- 音效 (WebAudio) */
+let actx = null;
+function beep(freq, dur = 0.07, type = 'square', vol = 0.05, slide = 0) {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, actx.currentTime);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(60, freq + slide), actx.currentTime + dur);
+    g.gain.setValueAtTime(vol, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + dur + 0.02);
+  } catch (e) { /* 静音也没关系 */ }
+}
+
+/* ---------------------------------------------------------------- 背景音乐 (WebAudio 节奏引擎) */
+const Music = { on: localStorage.getItem('bgm') !== 'off', step: 0, nextTime: 0, timer: null, ctx: null, master: null };
+const MUSIC_P = {
+  bpm: 116, root: 110, steps: 16,
+  kick: [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+  hat:  [0,1,0,2,0,1,0,2,0,1,0,2,0,1,0,2],
+  bass: [0,null,0,null,3,null,0,null,5,null,0,null,7,null,5,null],
+  arp:  [12,null,15,null,19,null,15,null,12,null,15,null,19,null,22,null],
+};
+let noiseBuf = null;
+
+function musicStart() {
+  if (Music.ctx) {
+    if (Music.ctx.state === 'suspended') Music.ctx.resume();
+    return;
+  }
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    Music.ctx = ac;
+    Music.master = ac.createGain();
+    Music.master.gain.value = 0.55;
+    Music.master.connect(ac.destination);
+    const len = Math.floor(ac.sampleRate * 0.5);
+    noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    Music.step = 0;
+    Music.nextTime = ac.currentTime + 0.08;
+    Music.timer = setInterval(musicTick, 25);
+  } catch (e) { /* 无音频也没关系 */ }
+}
+
+function musicToggle() {
+  Music.on = !Music.on;
+  localStorage.setItem('bgm', Music.on ? 'on' : 'off');
+}
+
+function musicTick() {
+  if (!Music.ctx) return;
+  const ac = Music.ctx;
+  while (Music.nextTime < ac.currentTime + 0.12) {
+    musicStep(Music.step, Music.nextTime);
+    Music.nextTime += 60 / MUSIC_P.bpm / 4;
+    Music.step = (Music.step + 1) % MUSIC_P.steps;
+  }
+}
+
+function musicStep(i, t) {
+  const p = MUSIC_P, ac = Music.ctx;
+  if (!Music.on) return;
+  const s = i % p.steps;
+  if (p.kick[s]) musicKick(t);
+  if (p.hat[s]) musicHat(t, p.hat[s]);
+  const b = p.bass[i % p.bass.length];
+  if (b != null) musicBass(t, p.root * Math.pow(2, b / 12) / 2);
+  const a = p.arp[i % p.arp.length];
+  if (a != null) musicArp(t, p.root * Math.pow(2, a / 12));
+}
+
+function musicKick(t) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+  o.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.15);
+}
+
+function musicHat(t, accent) {
+  const ac = Music.ctx, src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
+  src.buffer = noiseBuf;
+  f.type = 'highpass'; f.frequency.value = 7000;
+  g.gain.setValueAtTime(accent === 2 ? 0.09 : 0.05, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+  src.connect(f); f.connect(g); g.connect(Music.master);
+  src.start(t); src.stop(t + 0.05);
+}
+
+function musicBass(t, freq) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  f.type = 'lowpass'; f.frequency.value = 420;
+  g.gain.setValueAtTime(0.16, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(f); f.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.24);
+}
+
+function musicArp(t, freq) {
+  const ac = Music.ctx, o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'triangle'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.07, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  o.connect(g); g.connect(Music.master);
+  o.start(t); o.stop(t + 0.16);
+}
+
+/* ---------------------------------------------------------------- 初始化 */
+function buildBricks(levelIdx) {
+  const pattern = LEVELS[levelIdx % LEVELS.length];
+  const cols = pattern[0].length;
+  const marginX = 40, top = 92, gap = 6, bh = 26;
+  const bw = (W - marginX * 2 - gap * (cols - 1)) / cols;
+  const bricks = [];
+  pattern.forEach((row, r) => {
+    for (let c = 0; c < cols; c++) {
+      const ch = row[c];
+      if (!ch || ch === '.' || ch === '0') continue;
+      const steel = ch === 'S' || ch === 's';
+      bricks.push({
+        x: marginX + c * (bw + gap),
+        y: top + r * (bh + gap),
+        w: bw, h: bh,
+        hp: steel ? Infinity : Number(ch),
+        maxHp: steel ? Infinity : Number(ch),
+        steel, flash: 0, alive: true,
+      });
+    }
+  });
+  return bricks;
+}
+
+function ballSpeedFor(levelIdx) {
+  return Math.min(700, 400 + levelIdx * 38);
+}
+
+function resetBall() {
+  baseSpeed = ballSpeedFor(game.level);
+  game.balls = [{
+    x: paddle.x, y: paddle.y - BALL_R - 2, vx: 0, vy: 0,
+    r: BALL_R, stuck: true, trail: [],
+  }];
+  game.state = 'ready';
+}
+
+function startLevel(levelIdx, keepScore = true) {
+  game.level = levelIdx;
+  game.bricks = buildBricks(levelIdx);
+  game.powerups.length = 0;
+  game.particles.length = 0;
+  game.wideTimer = 0;
+  game.slowTimer = 0;
+  paddle.w = BASE_PADDLE_W;
+  paddle.x = paddle.target = W / 2;
+  if (!keepScore) game.score = 0;
+  resetBall();
+}
+
+function newGame() {
+  game.score = 0;
+  game.lives = 3;
+  startLevel(0, true);
+  game.toast = null;
+  musicStart();
+}
+
+/* ---------------------------------------------------------------- 输入 */
+const keys = Object.create(null);
+
+function pointerX(clientX) {
+  const r = cvs.getBoundingClientRect();
+  return clamp((clientX - r.left) / r.width * W, 0, W);
+}
+
+cvs.addEventListener('mousemove', e => { paddle.target = pointerX(e.clientX); });
+cvs.addEventListener('touchstart', e => { e.preventDefault(); paddle.target = pointerX(e.touches[0].clientX); }, { passive: false });
+cvs.addEventListener('touchmove', e => { e.preventDefault(); paddle.target = pointerX(e.touches[0].clientX); }, { passive: false });
+
+cvs.addEventListener('pointerdown', () => { primaryAction(); });
+
+cvs.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'Space', 'KeyA', 'KeyD'].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'Enter') primaryAction();
+  if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
+  if (e.code === 'KeyM') { musicToggle(); showToast(Music.on ? '音乐开' : '音乐关', '#38e1ff'); }
+  if (e.code === 'KeyR') newGame();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => {
+  if (game.state === 'playing') game.state = 'paused';
+  if (Music.ctx && Music.ctx.state === 'running') Music.ctx.suspend();
+});
+
+function primaryAction() {
+  if (game.state === 'menu' || game.state === 'gameover') { newGame(); return; }
+  if (game.state === 'ready') {
+    game.state = 'playing';
+    const a = rand(-0.35, 0.35);
+    game.balls.forEach(b => {
+      b.stuck = false;
+      b.vx = Math.sin(a) * baseSpeed;
+      b.vy = -Math.cos(a) * baseSpeed;
+    });
+    beep(520, 0.08, 'triangle', 0.06, 240);
+    return;
+  }
+  if (game.state === 'levelclear') { startLevel(game.level + 1, true); return; }
+  if (game.state === 'playing' || game.state === 'paused') togglePause();
+}
+
+function togglePause() {
+  if (game.state === 'playing') {
+    game.state = 'paused';
+    if (Music.ctx && Music.ctx.state === 'running') Music.ctx.suspend();
+  } else if (game.state === 'paused') {
+    game.state = 'playing';
+    if (Music.ctx && Music.ctx.state === 'suspended') Music.ctx.resume();
+  }
+}
+
+/* ---------------------------------------------------------------- 特效 */
+function burst(x, y, color, count = 14, power = 240) {
+  for (let i = 0; i < count; i++) {
+    const a = rand(0, TAU), s = rand(power * 0.25, power);
+    game.particles.push({
+      x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40,
+      life: rand(0.28, 0.7), max: 0.7, color, size: rand(2, 4.5),
+    });
+  }
+}
+
+function showToast(text, color) {
+  game.toast = { text, color, life: 1.6 };
+}
+
+/* ---------------------------------------------------------------- 碰撞 */
+function bounceOffBrick(ball, b) {
+  const nx = clamp(ball.x, b.x, b.x + b.w);
+  const ny = clamp(ball.y, b.y, b.y + b.h);
+  const dx = ball.x - nx, dy = ball.y - ny;
+  const d2 = dx * dx + dy * dy;
+  if (d2 > ball.r * ball.r) return false;
+
+  if (d2 > 0.0001) {
+    const d = Math.sqrt(d2), ux = dx / d, uy = dy / d;
+    const dot = ball.vx * ux + ball.vy * uy;
+    if (dot < 0) { ball.vx -= 2 * dot * ux; ball.vy -= 2 * dot * uy; }
+    ball.x = nx + ux * (ball.r + 0.5);
+    ball.y = ny + uy * (ball.r + 0.5);
+  } else {
+    const l = ball.x - b.x, r = b.x + b.w - ball.x;
+    const t = ball.y - b.y, bo = b.y + b.h - ball.y;
+    const m = Math.min(l, r, t, bo);
+    if (m === l) { ball.x = b.x - ball.r - 0.5; ball.vx = -Math.abs(ball.vx); }
+    else if (m === r) { ball.x = b.x + b.w + ball.r + 0.5; ball.vx = Math.abs(ball.vx); }
+    else if (m === t) { ball.y = b.y - ball.r - 0.5; ball.vy = -Math.abs(ball.vy); }
+    else { ball.y = b.y + b.h + ball.r + 0.5; ball.vy = Math.abs(ball.vy); }
+  }
+  return true;
+}
+
+function spawnPowerup(x, y) {
+  if (Math.random() > 0.14) return;
+  const kind = POWER_KEYS[Math.floor(Math.random() * POWER_KEYS.length)];
+  game.powerups.push({ x, y, w: 30, h: 30, vy: 135, kind, t: 0 });
+}
+
+function damageBrick(b, ball) {
+  b.flash = 1;
+  if (b.steel) {
+    beep(180, 0.06, 'square', 0.04);
+    burst(b.x + b.w / 2, b.y + b.h / 2, '#c9d8e8', 6, 140);
+    game.shake = Math.max(game.shake, 4);
+    return false;
+  }
+  b.hp -= 1;
+  game.score += 10;
+  const col = BRICK[b.maxHp] ? BRICK[b.maxHp][0] : '#fff';
+  if (b.hp <= 0) {
+    b.alive = false;
+    game.score += 15 * b.maxHp;
+    burst(b.x + b.w / 2, b.y + b.h / 2, col, 16, 260);
+    game.shake = Math.max(game.shake, 7);
+    beep(660 + b.maxHp * 90, 0.08, 'square', 0.05, -180);
+    spawnPowerup(b.x + b.w / 2, b.y + b.h / 2);
+  } else {
+    burst(ball.x, ball.y, col, 5, 150);
+    game.shake = Math.max(game.shake, 3);
+    beep(420, 0.045, 'square', 0.035);
+  }
+  return true;
+}
+
+/* ---------------------------------------------------------------- 更新 */
+function update(dt) {
+  game.time += dt;
+  game.shake = Math.max(0, game.shake - dt * 26);
+  game.flashAlpha = Math.max(0, game.flashAlpha - dt * 3);
+  if (game.toast) { game.toast.life -= dt; if (game.toast.life <= 0) game.toast = null; }
+
+  // 粒子
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const p = game.particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { game.particles.splice(i, 1); continue; }
+    p.vy += 620 * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+  }
+
+  const active = game.state === 'playing' || game.state === 'ready';
+  if (!active) return;
+
+  // 挡板
+  const keyV = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+  if (keyV) paddle.target = clamp(paddle.target + keyV * 780 * dt, 0, W);
+
+  const targetW = game.wideTimer > 0 ? 196 : BASE_PADDLE_W;
+  paddle.w += (targetW - paddle.w) * Math.min(1, dt * 9);
+  const prevX = paddle.x;
+  paddle.x += (paddle.target - paddle.x) * Math.min(1, dt * 22);
+  paddle.x = clamp(paddle.x, paddle.w / 2, W - paddle.w / 2);
+  paddle.vx = (paddle.x - prevX) / Math.max(dt, 1e-4);
+
+  // 计时器
+  if (game.wideTimer > 0) game.wideTimer -= dt;
+  if (game.slowTimer > 0) game.slowTimer -= dt;
+
+  // 道具下落
+  for (let i = game.powerups.length - 1; i >= 0; i--) {
+    const p = game.powerups[i];
+    p.t += dt;
+    p.y += p.vy * dt;
+    if (p.y - p.h / 2 > H) { game.powerups.splice(i, 1); continue; }
+    if (p.y + p.h / 2 >= paddle.y && p.y - p.h / 2 <= paddle.y + PADDLE_H &&
+        Math.abs(p.x - paddle.x) < paddle.w / 2 + p.w / 2) {
+      applyPowerup(p.kind);
+      game.powerups.splice(i, 1);
+    }
+  }
+
+  if (game.state === 'ready') {
+    const b = game.balls[0];
+    if (b) { b.x = paddle.x; b.y = paddle.y - b.r - 2; b.trail.length = 0; }
+    return;
+  }
+
+  // 球
+  const slowF = game.slowTimer > 0 ? 0.62 : 1;
+  for (let i = game.balls.length - 1; i >= 0; i--) {
+    const ball = game.balls[i];
+
+    // 分步移动，避免穿模
+    const speed = Math.hypot(ball.vx, ball.vy) * slowF;
+    const steps = clamp(Math.ceil(speed * dt / 5), 1, 12);
+    const sdt = dt / steps;
+
+    for (let s = 0; s < steps; s++) {
+      ball.x += ball.vx * slowF * sdt;
+      ball.y += ball.vy * slowF * sdt;
+
+      // 墙壁
+      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); beep(300, 0.04, 'sine', 0.03); }
+      if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); beep(300, 0.04, 'sine', 0.03); }
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); beep(300, 0.04, 'sine', 0.03); }
+
+      // 砖块
+      for (const b of game.bricks) {
+        if (!b.alive) continue;
+        if (bounceOffBrick(ball, b)) {
+          damageBrick(b, ball);
+          break;
+        }
+      }
+
+      // 挡板
+      if (ball.vy > 0 &&
+          ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + PADDLE_H &&
+          ball.x + ball.r >= paddle.x - paddle.w / 2 && ball.x - ball.r <= paddle.x + paddle.w / 2) {
+        const off = clamp((ball.x - paddle.x) / (paddle.w / 2), -1, 1);
+        const ang = off * (Math.PI / 3) + clamp(paddle.vx / 2600, -0.28, 0.28);
+        const sp = Math.min(Math.hypot(ball.vx, ball.vy), 900) * 1.01;
+        ball.vx = Math.sin(ang) * sp;
+        ball.vy = -Math.abs(Math.cos(ang) * sp);
+        ball.y = paddle.y - ball.r - 0.5;
+        beep(240 + Math.abs(off) * 200, 0.06, 'triangle', 0.05, 120);
+        burst(ball.x, paddle.y, '#38e1ff', 6, 120);
+      }
+
+      // 掉出底部
+      if (ball.y - ball.r > H) break;
+    }
+
+    // 拖尾
+    ball.trail.push({ x: ball.x, y: ball.y });
+    if (ball.trail.length > 12) ball.trail.shift();
+
+    if (ball.y - ball.r > H) {
+      burst(ball.x, H - 6, '#ff5c7a', 12, 200);
+      game.balls.splice(i, 1);
+    }
+  }
+
+  // 砖块闪光衰减
+  for (const b of game.bricks) if (b.flash > 0) b.flash = Math.max(0, b.flash - dt * 4);
+
+  // 失去所有球
+  if (game.balls.length === 0) {
+    game.lives--;
+    game.shake = 16;
+    if (game.lives > 0) resetBall();
+    else {
+      game.state = 'gameover';
+      if (game.score > highScore) { highScore = game.score; localStorage.setItem(HS_KEY, String(highScore)); }
+      beep(160, 0.5, 'sawtooth', 0.07, -110);
+    }
+    return;
+  }
+
+  // 过关
+  if (!game.bricks.some(b => b.alive && !b.steel)) {
+    game.state = 'levelclear';
+    game.flashAlpha = 0.75;
+    beep(880, 0.1, 'triangle', 0.06, 320);
+    if (game.score > highScore) { highScore = game.score; localStorage.setItem(HS_KEY, String(highScore)); }
+  }
+}
+
+function applyPowerup(kind) {
+  const info = POWERUPS[kind];
+  beep(760, 0.12, 'triangle', 0.06, 280);
+  burst(paddle.x, paddle.y, info.color, 18, 260);
+  if (kind === 'multi') {
+    const src = game.balls[0];
+    if (src && game.balls.length < 6) {
+      const sp = Math.max(360, Math.hypot(src.vx, src.vy));
+      for (const a of [-0.42, 0.42]) {
+        const ang = Math.atan2(src.vy, src.vx) + a;
+        game.balls.push({ x: src.x, y: src.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: BALL_R, stuck: false, trail: [] });
+      }
+    }
+  } else if (kind === 'wide') {
+    game.wideTimer = 14;
+  } else if (kind === 'slow') {
+    game.slowTimer = 11;
+  } else if (kind === 'life') {
+    game.lives = Math.min(6, game.lives + 1);
+  }
+  showToast(info.text, info.color);
+}
+
+/* ---------------------------------------------------------------- 绘制 */
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0d1436');
+  g.addColorStop(1, '#070a14');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(110,170,255,0.055)';
+  ctx.lineWidth = 1;
+  const step = 40;
+  const off = (game.time * 12) % step;
+  for (let x = -step + off; x < W + step; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBricks() {
+  for (const b of game.bricks) {
+    if (!b.alive) continue;
+    const pal = b.steel ? STEEL : (BRICK[b.maxHp] || BRICK[1]);
+    const ratio = b.steel ? 1 : b.hp / b.maxHp;
+
+    ctx.save();
+    ctx.shadowColor = pal[0];
+    ctx.shadowBlur = 16 + b.flash * 26;
+    const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+    g.addColorStop(0, pal[0]);
+    g.addColorStop(1, pal[1]);
+    ctx.fillStyle = g;
+    ctx.globalAlpha = b.steel ? 0.95 : 0.35 + ratio * 0.65;
+    rr(ctx, b.x, b.y, b.w, b.h, 7);
+    ctx.fill();
+    ctx.restore();
+
+    // 高光
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    rr(ctx, b.x + 5, b.y + 4, Math.max(8, b.w - 10), 3.5, 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (b.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = b.flash * 0.9;
+      ctx.fillStyle = '#fff';
+      rr(ctx, b.x, b.y, b.w, b.h, 7);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (b.steel) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';
+      ctx.lineWidth = 1.5;
+      for (let i = 1; i < 4; i++) {
+        const x = b.x + (b.w / 4) * i;
+        ctx.beginPath(); ctx.moveTo(x, b.y + 5); ctx.lineTo(x - 6, b.y + b.h - 5); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+}
+
+function drawPaddle() {
+  const x = paddle.x - paddle.w / 2;
+  ctx.save();
+  ctx.shadowColor = game.wideTimer > 0 ? '#7dffb0' : '#38e1ff';
+  ctx.shadowBlur = 26;
+  const g = ctx.createLinearGradient(x, paddle.y, x + paddle.w, paddle.y + PADDLE_H);
+  g.addColorStop(0, '#7dd3fc');
+  g.addColorStop(0.5, '#38e1ff');
+  g.addColorStop(1, '#7c8bff');
+  ctx.fillStyle = g;
+  rr(ctx, x, paddle.y, paddle.w, PADDLE_H, PADDLE_H / 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = 'rgba(255,255,255,.8)';
+  rr(ctx, x + 8, paddle.y + 3.5, Math.max(10, paddle.w - 16), 3, 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBalls() {
+  for (const b of game.balls) {
+    // 拖尾
+    for (let i = 0; i < b.trail.length; i++) {
+      const t = b.trail[i], a = (i / b.trail.length) * 0.35;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = game.slowTimer > 0 ? '#a78bfa' : '#8ce7ff';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, b.r * (0.35 + (i / b.trail.length) * 0.6), 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.shadowColor = game.slowTimer > 0 ? '#a78bfa' : '#9be8ff';
+    ctx.shadowBlur = 24;
+    const g = ctx.createRadialGradient(b.x - 2, b.y - 3, 1, b.x, b.y, b.r);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, game.slowTimer > 0 ? '#a78bfa' : '#38bdf8');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawPowerups() {
+  for (const p of game.powerups) {
+    const info = POWERUPS[p.kind];
+    const s = 1 + Math.sin(p.t * 8) * 0.06;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.sin(p.t * 3) * 0.12);
+    ctx.scale(s, s);
+    ctx.shadowColor = info.color;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = 'rgba(10,16,30,.85)';
+    rr(ctx, -p.w / 2, -p.h / 2, p.w, p.h, 8);
+    ctx.fill();
+    ctx.strokeStyle = info.color;
+    ctx.lineWidth = 2.5;
+    rr(ctx, -p.w / 2, -p.h / 2, p.w, p.h, 8);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = info.color;
+    ctx.font = '700 18px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(info.label, 0, 1);
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of game.particles) {
+    const a = clamp(p.life / p.max, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a + 0.6, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawHUD() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,215,255,.72)';
+  ctx.font = '600 15px "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('得分', 40, 34);
+  ctx.fillStyle = '#eaf4ff';
+  ctx.font = '700 26px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(String(game.score), 40, 62);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(180,215,255,.72)';
+  ctx.font = '600 15px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText('最高', W / 2, 34);
+  ctx.fillStyle = '#ffd166';
+  ctx.font = '700 22px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(String(Math.max(highScore, game.score)), W / 2, 60);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(180,215,255,.72)';
+  ctx.font = '600 15px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText('关卡 ' + (game.level + 1), W - 40, 34);
+
+  // 生命
+  for (let i = 0; i < game.lives; i++) {
+    const x = W - 44 - i * 24, y = 62;
+    ctx.save();
+    ctx.shadowColor = '#38e1ff'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#8ce7ff';
+    ctx.beginPath(); ctx.arc(x, y, 6.5, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  // 道具状态
+  let bx = 40;
+  const by = H - 26;
+  if (game.wideTimer > 0) bx = drawStatusChip(bx, by, '加宽', game.wideTimer, POWERUPS.wide.color);
+  if (game.slowTimer > 0) drawStatusChip(bx, by, '减速', game.slowTimer, POWERUPS.slow.color);
+
+  // 音乐状态
+  ctx.textAlign = 'right';
+  ctx.fillStyle = Music.on ? 'rgba(0,240,255,.9)' : 'rgba(150,170,200,.45)';
+  ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(Music.on ? '♪ 音乐开 (M)' : '♪ 音乐关 (M)', W - 40, H - 26);
+  ctx.restore();
+}
+
+function drawStatusChip(x, y, text, t, color) {
+  ctx.save();
+  ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+  const label = text + ' ' + t.toFixed(1) + 's';
+  const w = ctx.measureText(label).width + 20;
+  ctx.fillStyle = 'rgba(10,16,30,.7)';
+  rr(ctx, x, y - 11, w, 22, 11); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
+  rr(ctx, x, y - 11, w, 22, 11); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + 10, y + 1);
+  ctx.restore();
+  return x + w + 8;
+}
+
+function drawToast() {
+  if (!game.toast) return;
+  const a = clamp(game.toast.life / 0.5, 0, 1);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = game.toast.color; ctx.shadowBlur = 22;
+  ctx.fillStyle = game.toast.color;
+  ctx.font = '700 30px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(game.toast.text, W / 2, 150);
+  ctx.restore();
+}
+
+function overlay(alpha = 0.72) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(4,7,15,' + alpha + ')';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+function bigTitle(text, y, color = '#eaf4ff', size = 56) {
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = color; ctx.shadowBlur = 34;
+  ctx.fillStyle = color;
+  ctx.font = '800 ' + size + 'px "Segoe UI", "PingFang SC", system-ui, sans-serif';
+  ctx.fillText(text, W / 2, y);
+  ctx.restore();
+}
+
+function subText(text, y, color = 'rgba(190,215,250,.8)', size = 18) {
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  ctx.font = '500 ' + size + 'px "Segoe UI", "PingFang SC", system-ui, sans-serif';
+  ctx.fillText(text, W / 2, y);
+  ctx.restore();
+}
+
+function drawMenu() {
+  overlay(0.6);
+  bigTitle('霓虹打砖块', 220, '#9be8ff', 62);
+  subText('NEON  BREAKOUT', 268, 'rgba(160,200,255,.55)', 16);
+
+  const pulse = 0.6 + Math.sin(game.time * 3) * 0.4;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  subText('按 空格 / 点击屏幕 开始', 400, '#ffd166', 24);
+  ctx.restore();
+
+  subText('鼠标或手指拖动控制挡板 · ← → 也可操作', 452, 'rgba(190,215,250,.7)', 17);
+  subText('接住掉落的道具：三球 / 加宽 / 减速 / 加命', 484, 'rgba(190,215,250,.5)', 16);
+  subText('按 M 键开关背景音乐', 516, 'rgba(190,215,250,.5)', 16);
+  subText('历史最高：' + highScore, 540, 'rgba(125,255,176,.75)', 16);
+}
+
+function drawReady() {
+  const pulse = 0.55 + Math.sin(game.time * 4) * 0.45;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  subText('按 空格 / 点击 发射', paddle.y - 60, '#ffd166', 20);
+  ctx.restore();
+}
+
+function drawPaused() {
+  overlay(0.68);
+  bigTitle('已暂停', 280, '#9be8ff', 52);
+  subText('按 空格 或 P 继续 · 按 R 重新开始', 350, 'rgba(190,215,250,.8)', 20);
+}
+
+function drawLevelClear() {
+  overlay(0.62);
+  bigTitle('过关！', 250, '#7dffb0', 56);
+  subText('当前得分 ' + game.score, 310, '#eaf4ff', 22);
+  const pulse = 0.6 + Math.sin(game.time * 3.4) * 0.4;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  subText('按 空格 / 点击 进入第 ' + (game.level + 2) + ' 关', 380, '#ffd166', 22);
+  ctx.restore();
+}
+
+function drawGameOver() {
+  overlay(0.74);
+  bigTitle('游戏结束', 240, '#ff7ac4', 58);
+  subText('本局得分 ' + game.score, 305, '#eaf4ff', 24);
+  subText('历史最高 ' + highScore, 345, 'rgba(255,209,102,.9)', 18);
+  const pulse = 0.6 + Math.sin(game.time * 3.4) * 0.4;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  subText('按 空格 / 点击 再来一局', 415, '#ffd166', 22);
+  ctx.restore();
+}
+
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+
+  ctx.save();
+  if (game.shake > 0.2) {
+    ctx.translate(rand(-game.shake, game.shake), rand(-game.shake, game.shake));
+  }
+  drawBricks();
+  drawPowerups();
+  drawPaddle();
+  drawBalls();
+  drawParticles();
+  ctx.restore();
+
+  // 边框光晕
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,200,255,.18)';
+  ctx.lineWidth = 2;
+  rr(ctx, 1, 1, W - 2, H - 2, 18);
+  ctx.stroke();
+  ctx.restore();
+
+  drawHUD();
+  drawToast();
+
+  if (game.flashAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = game.flashAlpha * 0.5;
+    ctx.fillStyle = '#9be8ff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  if (game.state === 'menu') drawMenu();
+  else if (game.state === 'ready') drawReady();
+  else if (game.state === 'paused') drawPaused();
+  else if (game.state === 'levelclear') drawLevelClear();
+  else if (game.state === 'gameover') drawGameOver();
+}
+
+/* ---------------------------------------------------------------- 主循环 */
+let last = performance.now();
+function frame(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  dt = Math.min(dt, 1 / 30);   // 防止切后台后跳帧
+  update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+startLevel(0, true);
+game.state = 'menu';
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

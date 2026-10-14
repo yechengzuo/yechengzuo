@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060f">
+<title>更新公告 · yechengzuo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
+<style>
+  :root { --cyan: #00f0ff; --magenta: #ff2ec4; --yellow: #ffe14d; --green: #57ff9a; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    background-color: #05060f;
+    background-image:
+      linear-gradient(rgba(0,240,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,.05) 1px, transparent 1px),
+      radial-gradient(900px 520px at 15% -10%, rgba(20,40,120,.5), transparent 60%),
+      radial-gradient(900px 520px at 110% 115%, rgba(120,20,90,.4), transparent 60%);
+    background-size: 46px 46px, 46px 46px, auto, auto;
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+  }
+
+  .back {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 6;
+    padding: 8px 16px;
+    font-size: 14px;
+    letter-spacing: .12em;
+    color: #bffcff;
+    text-decoration: none;
+    border: 1px solid rgba(0,240,255,.6);
+    background: rgba(0,240,255,.08);
+    text-shadow: 0 0 8px rgba(0,240,255,.7);
+    transition: all .25s ease;
+  }
+  .back:hover { color: #fff; background: rgba(0,240,255,.18); box-shadow: 0 0 18px rgba(0,240,255,.5); }
+
+  main {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    text-align: center;
+    padding: 0 1.25rem;
+  }
+
+  .inner {
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4.5rem 0 3rem;
+  }
+
+  .kicker {
+    font-size: .8rem;
+    letter-spacing: .5em;
+    text-indent: .5em;
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,.6);
+    margin-bottom: .9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: .2em;
+    text-indent: .2em;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(0,240,255,.95), 0 0 34px rgba(0,240,255,.55), 3px 0 0 rgba(255,46,196,.5);
+  }
+
+  .sub {
+    margin-top: .8rem;
+    font-size: clamp(.8rem, 1.8vw, .95rem);
+    letter-spacing: .22em;
+    text-indent: .22em;
+    color: rgba(160,225,255,.9);
+  }
+
+  .entries {
+    margin-top: 2.6rem;
+    width: min(92vw, 640px);
+    text-align: left;
+  }
+
+  .entry {
+    position: relative;
+    border-left: 2px solid rgba(0,240,255,.45);
+    padding: 0 0 1.9rem 1.4rem;
+    margin-left: .5rem;
+  }
+
+  .entry:last-child { padding-bottom: 0; }
+
+  .entry::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 12px rgba(0,240,255,.9);
+  }
+
+  .entry:first-child::before {
+    background: var(--magenta);
+    box-shadow: 0 0 14px rgba(255,46,196,.9);
+  }
+
+  .entry-head {
+    display: flex;
+    align-items: baseline;
+    gap: .9rem;
+    flex-wrap: wrap;
+  }
+
+  .entry-head .ver {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--yellow);
+    text-shadow: 0 0 10px rgba(255,225,77,.7);
+  }
+
+  .entry:first-child .ver { color: var(--magenta); text-shadow: 0 0 10px rgba(255,46,196,.8); }
+
+  .entry-head .date {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .8rem;
+    color: rgba(160,225,255,.75);
+  }
+
+  .entry ul {
+    margin-top: .6rem;
+    padding-left: 1.2rem;
+    list-style: none;
+  }
+
+  .entry li {
+    position: relative;
+    margin-top: .35rem;
+    font-size: .9rem;
+    line-height: 1.7;
+    letter-spacing: .06em;
+    color: rgba(223,248,255,.92);
+  }
+
+  .entry li::before {
+    content: "▸";
+    position: absolute;
+    left: -1.2rem;
+    color: var(--cyan);
+  }
+
+  footer {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    text-align: center;
+    font-size: .72rem;
+    letter-spacing: .28em;
+    text-indent: .28em;
+    color: rgba(170,225,255,.75);
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<a class="back" href="index.html">← 返回首页</a>
+<main>
+  <div class="inner">
+    <p class="kicker">UPDATE LOG</p>
+    <h1>更新公告</h1>
+    <p class="sub">这个网站的一点一滴，都记在这里</p>
+
+    <div class="entries">
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.7</span>
+          <span class="date">2026.10.14</span>
+        </div>
+        <ul>
+          <li>新增「更新公告」页面，就是你现在看的这里</li>
+          <li>首页右上角新增公告入口</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.6</span>
+          <span class="date">2026.10.14</span>
+        </div>
+        <ul>
+          <li>三个游戏加入背景音乐（按 M 键开关）</li>
+          <li>新增「霓虹钢琴」，键盘对应琴键，可触摸弹奏</li>
+          <li>首页自动更新检测——以后更新无需手动刷新</li>
+          <li>页脚上线访客计数器</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.5</span>
+          <span class="date">2026.10.14</span>
+        </div>
+        <ul>
+          <li>新增「霓虹贪吃蛇」：滑动转向，金色光点限时加分</li>
+          <li>新增「霓虹太空射击」：三种敌机、双发与护盾道具</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.4</span>
+          <span class="date">2026.10.14</span>
+        </div>
+        <ul>
+          <li>首页全面改版为赛博朋克风格</li>
+          <li>新增「自制小游戏」大厅页</li>
+          <li>标题改为「欢迎来到 yechengzuo 的个人网站」</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.3</span>
+          <span class="date">2026.10.14</span>
+        </div>
+        <ul>
+          <li>首页新增「霓虹打砖块」小游戏</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <span class="ver">v1.0</span>
+          <span class="date">2026.10.13</span>
+        </div>
+        <ul>
+          <li>网站诞生：自然治愈风首页，随真实时间变化的天空</li>
+          <li>部署至 GitHub Pages，正式上线</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+<footer>© 2026 YECHENGZUO · KEEP SHIPPING</footer>
+</body>
+</html>
