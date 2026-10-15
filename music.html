@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060f">
+<title>霓虹乐器 · yechengzuo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
+<style>
+  :root { --cyan: #00f0ff; --magenta: #ff2ec4; --yellow: #ffe14d; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    overflow: hidden;
+    background-color: #05060f;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.05) 1px, transparent 1px),
+      radial-gradient(900px 520px at 15% -10%, rgba(20,40,120,0.5), transparent 60%),
+      radial-gradient(900px 520px at 110% 115%, rgba(120,20,90,0.45), transparent 60%);
+    background-size: 46px 46px, 46px 46px, auto, auto;
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px); }
+
+  .back {
+    position: fixed; top: 18px; left: 18px; z-index: 6;
+    padding: 8px 16px; font-size: 14px; letter-spacing: .12em; color: #bffcff;
+    text-decoration: none; border: 1px solid rgba(0,240,255,.6); background: rgba(0,240,255,.08);
+    text-shadow: 0 0 8px rgba(0,240,255,.7); transition: all .25s ease;
+  }
+  .back:hover { color: #fff; background: rgba(0,240,255,.18); box-shadow: 0 0 18px rgba(0,240,255,.5); }
+
+  main {
+    position: fixed; inset: 0; z-index: 4;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 0 1.25rem;
+  }
+
+  .kicker { font-size: .8rem; letter-spacing: .5em; text-indent: .5em; color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,.6); margin-bottom: 1rem; }
+
+  h1 { font-size: clamp(1.9rem, 5vw, 2.9rem); letter-spacing: .2em; text-indent: .2em; color: #fff;
+    text-shadow: 0 0 10px rgba(0,240,255,.95), 0 0 34px rgba(0,240,255,.55), 3px 0 0 rgba(255,46,196,.5); }
+
+  .sub { margin-top: .8rem; font-size: clamp(.8rem, 1.8vw, .95rem); letter-spacing: .24em; text-indent: .24em; color: rgba(160,225,255,.9); }
+
+  .deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1rem;
+    margin-top: 2.4rem;
+  }
+
+  .card {
+    display: block;
+    width: min(80vw, 320px);
+    padding: 1.2rem 3rem 1.2rem 1.5rem;
+    text-decoration: none;
+    position: relative;
+    border: 2px solid var(--cyan);
+    background: rgba(0,240,255,0.05);
+    box-shadow: 0 0 22px rgba(0,240,255,0.28), inset 0 0 22px rgba(0,240,255,0.07);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: var(--magenta);
+    background: rgba(255,46,196,0.07);
+    box-shadow: 0 0 34px rgba(255,46,196,0.45), inset 0 0 26px rgba(255,46,196,0.1);
+    transform: translateY(-3px);
+  }
+
+  .card .g-title { display: block; text-align: left; font-size: 1.3rem; font-weight: 700; letter-spacing: .12em; color: #fff; text-shadow: 0 0 10px rgba(0,240,255,.8); }
+  .card:hover .g-title { text-shadow: 0 0 10px rgba(255,46,196,.8); }
+  .card .g-en { display: block; margin-top: .5rem; text-align: left; font-size: .74rem; letter-spacing: .26em; color: rgba(160,225,255,.9); }
+  .card .g-go { position: absolute; right: 1.1rem; top: 50%; transform: translateY(-50%); font-size: 1.25rem; color: var(--cyan); text-shadow: 0 0 12px rgba(0,240,255,.8); }
+  .card:hover .g-go { color: var(--magenta); text-shadow: 0 0 12px rgba(255,46,196,.8); }
+
+  footer { position: fixed; bottom: 1.5rem; left: 0; right: 0; z-index: 3; text-align: center; font-size: .72rem;
+    letter-spacing: .28em; text-indent: .28em; color: rgba(170,225,255,.75); }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<a class="back" href="index.html">← 返回首页</a>
+<main>
+  <p class="kicker">NEON INSTRUMENTS</p>
+  <h1>霓虹乐器</h1>
+  <p class="sub">选一件乐器，开始演奏</p>
+
+  <div class="deck">
+    <a class="card" href="piano.html">
+      <span class="g-title">钢琴</span>
+      <span class="g-en">PIANO · 键盘弹奏</span>
+      <span class="g-go">▶</span>
+    </a>
+    <a class="card" href="guitar.html">
+      <span class="g-title">吉他</span>
+      <span class="g-en">GUITAR · 和弦扫弦</span>
+      <span class="g-go">▶</span>
+    </a>
+    <a class="card" href="violin.html">
+      <span class="g-title">小提琴</span>
+      <span class="g-en">VIOLIN · 拉奏颤音</span>
+      <span class="g-go">▶</span>
+    </a>
+  </div>
+</main>
+<footer>© 2026 YECHENGZUO · PLAY THE NEON</footer>
+</body>
+</html>

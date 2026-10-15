@@ -3,14 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>霓虹钢琴 · Neon Piano</title>
+<title>钢琴 · Neon Piano</title>
 <style>
   :root { --cyan: #00f0ff; --magenta: #ff2ec4; --yellow: #ffe14d; }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   html, body { height: 100%; }
-
   body {
     overflow: hidden;
     background-color: #05060f;
@@ -25,364 +22,170 @@
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
   }
-
-  .scanlines {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 5;
-    background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
-  }
-
-  .back {
-    position: fixed;
-    top: 18px;
-    left: 18px;
-    z-index: 6;
-    padding: 8px 16px;
-    font-size: 14px;
-    letter-spacing: .12em;
-    color: #bffcff;
-    text-decoration: none;
-    border: 1px solid rgba(0,240,255,.6);
-    background: rgba(0,240,255,.08);
-    text-shadow: 0 0 8px rgba(0,240,255,.7);
-    transition: all .25s ease;
-  }
+  .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px); }
+  .back { position: fixed; top: 18px; left: 18px; z-index: 6; padding: 8px 16px; font-size: 14px; letter-spacing: .12em;
+    color: #bffcff; text-decoration: none; border: 1px solid rgba(0,240,255,.6); background: rgba(0,240,255,.08);
+    text-shadow: 0 0 8px rgba(0,240,255,.7); transition: all .25s ease; }
   .back:hover { color: #fff; background: rgba(0,240,255,.18); box-shadow: 0 0 18px rgba(0,240,255,.5); }
+  main { position: fixed; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 1rem; }
+  .kicker { font-size: .78rem; letter-spacing: .5em; text-indent: .5em; color: var(--cyan); text-shadow: 0 0 10px rgba(0,240,255,.6); margin-bottom: .7rem; }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); letter-spacing: .2em; text-indent: .2em; color: #fff;
+    text-shadow: 0 0 10px rgba(0,240,255,.95), 0 0 34px rgba(0,240,255,.55), 3px 0 0 rgba(255,46,196,.5); }
+  .sub { margin-top: .6rem; font-size: .82rem; letter-spacing: .22em; text-indent: .22em; color: rgba(160,225,255,.9); }
 
-  main {
-    position: fixed;
-    inset: 0;
-    z-index: 4;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0 1rem;
-  }
+  .piano-wrap { margin-top: 1.6rem; max-width: 98vw; overflow-x: auto; padding-bottom: 6px; }
+  .piano { position: relative; height: 210px; width: 784px; margin: 0 auto; user-select: none; }
+  .pkey { position: absolute; border-radius: 0 0 8px 8px; cursor: pointer; transition: box-shadow .12s ease, transform .06s ease; }
+  .pkey.w { top: 0; width: 56px; height: 210px; background: linear-gradient(#f4fbff 0%, #cfe8f5 88%, #b9d8ea 100%); border: 1px solid #0a1220;
+    box-shadow: 0 0 14px rgba(0,240,255,.16), inset 0 -10px 18px rgba(10,40,70,.18); }
+  .pkey.w.active { background: linear-gradient(#e0fbff 0%, #8ee4ff 60%, #5fd0f5 100%); box-shadow: 0 0 26px rgba(0,240,255,.75); transform: translateY(2px); }
+  .pkey.b { top: 0; width: 36px; height: 130px; z-index: 2; background: linear-gradient(#232c40 0%, #0a0f1c 100%); border: 1px solid #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,.65), 0 0 10px rgba(255,46,196,.25); }
+  .pkey.b.active { background: linear-gradient(#4a2a5a 0%, #1c0f2e 100%); box-shadow: 0 0 24px rgba(255,46,196,.8); transform: translateY(2px); }
+  .pkey .nm { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 12px; font-weight: 700; color: #123a52; pointer-events: none; }
+  .pkey.b .nm { color: #9be8ff; }
+  .pkey .kb { position: absolute; bottom: 30px; left: 0; right: 0; text-align: center; font-size: 11px; color: rgba(18,58,82,.55); pointer-events: none; }
+  .pkey.b .kb { color: rgba(155,232,255,.5); }
+  .pkey.pending { outline: 2px solid var(--yellow); box-shadow: 0 0 22px rgba(255,225,77,.8); }
 
-  .kicker {
-    font-size: .8rem;
-    letter-spacing: .5em;
-    text-indent: .5em;
-    color: var(--cyan);
-    text-shadow: 0 0 10px rgba(0,240,255,.6);
-    margin-bottom: .9rem;
-  }
-
-  h1 {
-    font-size: clamp(1.9rem, 5vw, 3rem);
-    letter-spacing: .2em;
-    text-indent: .2em;
-    color: #fff;
-    text-shadow: 0 0 10px rgba(0,240,255,.95), 0 0 34px rgba(0,240,255,.55), 3px 0 0 rgba(255,46,196,.5);
-  }
-
-  .sub {
-    margin-top: .8rem;
-    font-size: clamp(.8rem, 1.8vw, .95rem);
-    letter-spacing: .22em;
-    text-indent: .22em;
-    color: rgba(160,225,255,.9);
-  }
-
-  /* ---------- 钢琴 ---------- */
-  .piano-scroll {
-    max-width: 98vw;
-    overflow-x: auto;
-    overflow-y: hidden;
-    margin-top: 2.2rem;
-    padding-bottom: 6px;
-  }
-
-  .piano {
-    position: relative;
-    height: 230px;
-    width: 784px;          /* 14 白键 × 56px */
-    margin: 0 auto;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .key {
-    position: absolute;
-    border-radius: 0 0 8px 8px;
-    cursor: pointer;
-    transition: box-shadow .12s ease, transform .06s ease;
-  }
-
-  .key.white {
-    top: 0;
-    width: 56px;
-    height: 230px;
-    background: linear-gradient(#f4fbff 0%, #cfe8f5 88%, #b9d8ea 100%);
-    border: 1px solid #0a1220;
-    box-shadow: 0 0 14px rgba(0,240,255,.16), inset 0 -10px 18px rgba(10,40,70,.18);
-  }
-
-  .key.white.active {
-    background: linear-gradient(#e0fbff 0%, #8ee4ff 60%, #5fd0f5 100%);
-    box-shadow: 0 0 26px rgba(0,240,255,.75), inset 0 0 20px rgba(0,240,255,.4);
-    transform: translateY(2px);
-  }
-
-  .key.black {
-    top: 0;
-    width: 36px;
-    height: 142px;
-    z-index: 2;
-    background: linear-gradient(#232c40 0%, #0a0f1c 100%);
-    border: 1px solid #000;
-    box-shadow: 0 4px 12px rgba(0,0,0,.65), 0 0 10px rgba(255,46,196,.25);
-  }
-
-  .key.black.active {
-    background: linear-gradient(#4a2a5a 0%, #1c0f2e 100%);
-    box-shadow: 0 0 24px rgba(255,46,196,.8), inset 0 0 14px rgba(255,46,196,.4);
-    transform: translateY(2px);
-  }
-
-  .key .note-name {
-    position: absolute;
-    bottom: 12px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .05em;
-    color: #123a52;
-    pointer-events: none;
-  }
-  .key.black .note-name { color: #9be8ff; text-shadow: 0 0 8px rgba(0,240,255,.7); }
-  .key .kbd {
-    position: absolute;
-    bottom: 34px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 11px;
-    color: rgba(18,58,82,.55);
-    pointer-events: none;
-  }
-  .key.black .kbd { color: rgba(155,232,255,.5); }
-
-  .demo-btn {
-    margin-top: 1.9rem;
-    display: inline-block;
-    padding: .6rem 1.8rem;
-    font-size: .95rem;
-    letter-spacing: .24em;
-    text-indent: .24em;
-    color: #ffd166;
-    text-decoration: none;
-    border: 1px solid rgba(255,209,102,.55);
-    background: rgba(255,209,102,.06);
-    text-shadow: 0 0 8px rgba(255,209,102,.6);
-    transition: all .25s ease;
-    cursor: pointer;
-  }
-  .demo-btn:hover {
-    color: #fff;
-    background: rgba(255,209,102,.16);
-    box-shadow: 0 0 22px rgba(255,209,102,.55);
-  }
-
-  .legend {
-    margin-top: 1.3rem;
-    font-family: Consolas, "Courier New", monospace;
-    font-size: .78rem;
-    letter-spacing: .12em;
-    color: rgba(150,225,255,.85);
-  }
-
-  footer {
-    position: fixed;
-    bottom: 1.4rem;
-    left: 0;
-    right: 0;
-    z-index: 3;
-    text-align: center;
-    font-size: .72rem;
-    letter-spacing: .24em;
-    text-indent: .24em;
-    color: rgba(170,225,255,.75);
-  }
-
-  @media (max-width: 860px) {
-    .piano-scroll { margin-top: 1.6rem; }
-    footer { display: none; }   /* 手机屏小，底部提示省略 */
-  }
+  .controls { display: flex; flex-wrap: wrap; gap: .8rem; justify-content: center; margin-top: 1.6rem; }
+  .ctl { padding: .55rem 1.3rem; font-size: .9rem; letter-spacing: .12em; color: #bffcff; border: 1px solid rgba(0,240,255,.5);
+    background: rgba(0,240,255,.06); cursor: pointer; border-radius: 4px; transition: all .2s ease; }
+  .ctl:hover { background: rgba(0,240,255,.15); box-shadow: 0 0 14px rgba(0,240,255,.45); }
+  .ctl.on { color: #fff; background: rgba(255,46,196,.2); border-color: var(--magenta); box-shadow: 0 0 16px rgba(255,46,196,.6); }
+  .legend { margin-top: 1rem; font-family: Consolas, monospace; font-size: .76rem; letter-spacing: .08em; color: rgba(150,225,255,.85); line-height: 1.8; max-width: 92vw; }
+  footer { position: fixed; bottom: 1.3rem; left: 0; right: 0; z-index: 3; text-align: center; font-size: .7rem;
+    letter-spacing: .24em; text-indent: .24em; color: rgba(170,225,255,.75); }
+  @media (max-width: 860px) { footer { display: none; } }
 </style>
 </head>
 <body>
 <div class="scanlines"></div>
-<a class="back" href="games.html">← 返回首页</a>
+<a class="back" href="music.html">← 返回乐器</a>
 <main>
   <p class="kicker">NEON PIANO</p>
-  <h1>霓虹钢琴</h1>
-  <p class="sub">按琴键或键盘弹奏 · 琴声带延时混响</p>
+  <h1>钢琴</h1>
+  <p class="sub">点击琴键或按对应键盘键弹奏</p>
 
-  <div class="piano-scroll">
-    <div class="piano" id="piano"></div>
+  <div class="piano-wrap"><div class="piano" id="piano"></div></div>
+
+  <div class="controls">
+    <button class="ctl" id="remap">⌨ 改键位</button>
+    <button class="ctl" id="demo">♫ 试听</button>
   </div>
-
-  <button class="demo-btn" id="demo">♫ 试听一小段</button>
-
-  <p class="legend">低音区：Z S X D C V G B H N J M · 高音区：Q 2 W 3 E R 5 T 6 Y 7 U</p>
+  <p class="legend" id="legend"></p>
 </main>
 <footer>© 2026 YECHENGZUO · PLAY THE NEON</footer>
 
 <script>
-(function () {
+(() => {
   'use strict';
 
-  /* ---------- 键位映射：两个八度 (C4~B5) ---------- */
-  const NOTES = {
-    z: 60, s: 61, x: 62, d: 63, c: 64, v: 65, g: 66, b: 67, h: 68, n: 69, j: 70, m: 71,
-    q: 72, '2': 73, w: 74, '3': 75, e: 76, r: 77, '5': 78, t: 79, '6': 80, y: 81, '7': 82, u: 83,
-  };
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const nameOf = m => NOTE_NAMES[m % 12] + Math.floor(m / 12 - 1);
+  const WHITE = [60,62,64,65,67,69,71,72,74,76,77,79,81,83];
+  const BLACK = [61,63,66,68,70,73,75,78,80,82];
 
-  const WHITE = [
-    { midi: 60, k: 'Z' }, { midi: 62, k: 'X' }, { midi: 64, k: 'C' }, { midi: 65, k: 'V' },
-    { midi: 67, k: 'B' }, { midi: 69, k: 'N' }, { midi: 71, k: 'M' },
-    { midi: 72, k: 'Q' }, { midi: 74, k: 'W' }, { midi: 76, k: 'E' }, { midi: 77, k: 'R' },
-    { midi: 79, k: 'T' }, { midi: 81, k: 'Y' }, { midi: 83, k: 'U' },
-  ];
-  const BLACK = [
-    { midi: 61, k: 'S', after: 0 }, { midi: 63, k: 'D', after: 1 },
-    { midi: 66, k: 'G', after: 3 }, { midi: 68, k: 'H', after: 4 }, { midi: 70, k: 'J', after: 5 },
-    { midi: 73, k: '2', after: 7 }, { midi: 75, k: '3', after: 8 },
-    { midi: 78, k: '5', after: 10 }, { midi: 80, k: '6', after: 11 }, { midi: 82, k: '7', after: 12 },
-  ];
+  const DEFAULT = { 60:'Z',61:'S',62:'X',63:'D',64:'C',65:'V',66:'G',67:'B',68:'H',69:'N',70:'J',71:'M',72:'Q',73:'2',74:'W',75:'3',76:'E',77:'R',78:'5',79:'T',80:'6',81:'Y',82:'7',83:'U' };
+  const KEY = 'bindings-piano';
 
-  const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  function load() { try { const b = JSON.parse(localStorage.getItem(KEY) || '{}'); const o = Object.assign({}, DEFAULT); for (const k in b) o[k] = b[k]; return o; } catch (e) { return Object.assign({}, DEFAULT); } }
+  let bindings = load();
+  function save() { localStorage.setItem(KEY, JSON.stringify(bindings)); }
 
-  /* ---------- 音频：振荡器 + 反馈延时 ---------- */
+  let remapMode = false, pending = null;
   let actx = null, master = null, delay = null, delayGain = null;
 
   function audioInit() {
     if (actx) return;
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain();
-    master.gain.value = 0.8;
-    master.connect(actx.destination);
-    delay = actx.createDelay(1);
-    delay.delayTime.value = 0.28;
-    delayGain = actx.createGain();
-    delayGain.gain.value = 0.32;
-    master.connect(delay);
-    delay.connect(delayGain);
-    delayGain.connect(delay);            // 反馈
-    delayGain.connect(actx.destination); // 湿声
+    master = actx.createGain(); master.gain.value = 0.8; master.connect(actx.destination);
+    delay = actx.createDelay(1); delay.delayTime.value = 0.28;
+    delayGain = actx.createGain(); delayGain.gain.value = 0.3;
+    master.connect(delay); delay.connect(delayGain); delayGain.connect(delay); delayGain.connect(actx.destination);
   }
 
   function playNote(midi) {
     try {
       audioInit();
-      const f = 440 * Math.pow(2, (midi - 69) / 12);
-      const t = actx.currentTime;
-      const o1 = actx.createOscillator(), o2 = actx.createOscillator();
-      const g = actx.createGain(), g2 = actx.createGain();
-      o1.type = 'triangle';
-      o1.frequency.value = f;
-      o2.type = 'sine';
-      o2.frequency.value = f * 2.001;    // 轻微失谐的泛音，更"钢琴"
-      g2.gain.value = 0.22;
+      const f = 440 * Math.pow(2, (midi - 69) / 12), t = actx.currentTime;
+      const o1 = actx.createOscillator(), o2 = actx.createOscillator(), g = actx.createGain(), g2 = actx.createGain();
+      o1.type = 'triangle'; o1.frequency.value = f;
+      o2.type = 'sine'; o2.frequency.value = f * 2.001; g2.gain.value = 0.22;
       o2.connect(g2); g2.connect(g);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.5, t + 0.012);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
       o1.connect(g); g.connect(master);
-      o1.start(t); o1.stop(t + 1.7);
-      o2.start(t); o2.stop(t + 1.7);
-    } catch (e) { /* 静音也没关系 */ }
+      o1.start(t); o1.stop(t + 1.7); o2.start(t); o2.stop(t + 1.7);
+    } catch (e) { /* 静音 */ }
   }
 
-  /* ---------- 构建琴键 ---------- */
-  const piano = document.getElementById('piano');
-  const keyEls = new Map();   // midi -> element
+  const pianoBox = document.getElementById('piano');
 
-  WHITE.forEach((w, i) => {
-    const el = document.createElement('div');
-    el.className = 'key white';
-    el.style.left = (i * 56) + 'px';
-    el.dataset.midi = w.midi;
-    el.innerHTML =
-      '<span class="note-name">' + NOTE_NAMES[w.midi % 12] + (Math.floor(w.midi / 12) - 1) + '</span>' +
-      '<span class="kbd">' + w.k + '</span>';
-    piano.appendChild(el);
-    keyEls.set(w.midi, el);
-  });
-
-  BLACK.forEach((b) => {
-    const el = document.createElement('div');
-    el.className = 'key black';
-    el.style.left = ((b.after + 1) * 56 - 18) + 'px';
-    el.dataset.midi = b.midi;
-    el.innerHTML =
-      '<span class="note-name">' + NOTE_NAMES[b.midi % 12] + '</span>' +
-      '<span class="kbd">' + b.k + '</span>';
-    piano.appendChild(el);
-    keyEls.set(b.midi, el);
-  });
-
-  function press(midi) {
-    const el = keyEls.get(midi);
-    if (el) el.classList.add('active');
-    playNote(midi);
+  function render() {
+    pianoBox.innerHTML = '';
+    WHITE.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'pkey w'; el.dataset.midi = m;
+      el.style.left = (WHITE.indexOf(m) * 56) + 'px';
+      el.innerHTML = '<span class="nm">' + nameOf(m) + '</span><span class="kb">' + (bindings[m] || '?') + '</span>';
+      el.addEventListener('pointerdown', () => press(m, el));
+      pianoBox.appendChild(el);
+    });
+    BLACK.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'pkey b'; el.dataset.midi = m;
+      el.style.left = ((BLACK.indexOf(m) + 1) * 56 - 18) + 'px';
+      el.innerHTML = '<span class="nm">' + nameOf(m) + '</span><span class="kb">' + (bindings[m] || '?') + '</span>';
+      el.addEventListener('pointerdown', () => press(m, el));
+      pianoBox.appendChild(el);
+    });
+    updateLegend();
   }
 
-  function release(midi) {
-    const el = keyEls.get(midi);
-    if (el) el.classList.remove('active');
+  function press(m, el) {
+    if (remapMode) { pending = m; document.querySelectorAll('.pending').forEach(e => e.classList.remove('pending')); el.classList.add('pending'); updateLegend(); return; }
+    el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 200);
+    playNote(m);
   }
 
-  /* ---------- 键盘 ---------- */
-  window.addEventListener('keydown', e => {
-    const k = e.key.toLowerCase();
-    if (NOTES[k] == null || e.repeat) return;
-    e.preventDefault();
-    press(NOTES[k]);
-  });
-  window.addEventListener('keyup', e => {
-    const k = e.key.toLowerCase();
-    if (NOTES[k] == null) return;
-    release(NOTES[k]);
-  });
-  window.addEventListener('blur', () => {
-    keyEls.forEach(el => el.classList.remove('active'));
-  });
+  function updateLegend() {
+    const l = document.getElementById('legend');
+    l.textContent = remapMode
+      ? (pending != null ? '已选中「' + nameOf(pending) + '」，请按新键位（Esc 取消）' : '点击一个琴键，再按新键位（Esc 退出）')
+      : '低音区 Z S X D C V G B H N J M · 高音区 Q 2 W 3 E R 5 T 6 Y 7 U';
+  }
 
-  /* ---------- 鼠标 / 触控 ---------- */
-  let pointerCount = 0;
-  piano.addEventListener('pointerdown', e => {
-    if (!e.target.classList || !e.target.classList.contains('key')) return;
-    pointerCount++;
-    press(Number(e.target.dataset.midi));
-  });
-  piano.addEventListener('pointerup', e => {
-    if (!e.target.classList || !e.target.classList.contains('key')) return;
-    pointerCount = Math.max(0, pointerCount - 1);
-    release(Number(e.target.dataset.midi));
-  });
-  piano.addEventListener('pointerleave', e => {
-    if (e.target.classList && e.target.classList.contains('key')) {
-      release(Number(e.target.dataset.midi));
-    }
-  });
+  const remapBtn = document.getElementById('remap');
+  remapBtn.addEventListener('click', () => { remapMode = !remapMode; pending = null; remapBtn.classList.toggle('on', remapMode); updateLegend(); });
 
-  /* 防止长按移动端菜单 */
-  piano.addEventListener('contextmenu', e => e.preventDefault());
-
-  /* ---------- 试听小段 ---------- */
-  const RIFF = [72, 76, 79, 84, 79, 76, 72, 71, 72, 76, 79, 81, 79, 76, 74, 72];
   document.getElementById('demo').addEventListener('click', () => {
-    audioInit();
-    RIFF.forEach((m, i) => setTimeout(() => playNote(m), i * 210));
+    [72,76,79,84,79,76,72,71,72,76,79,81,79,76,74,72].forEach((m, i) => setTimeout(() => playNote(m), i * 210));
   });
+
+  function keyToMidi(key) { for (const id of Object.keys(bindings)) if (bindings[id] === key) return Number(id); return null; }
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Escape') { remapMode = false; pending = null; remapBtn.classList.remove('on'); updateLegend(); return; }
+    if (remapMode) {
+      const key = e.key.toUpperCase();
+      if (key.length !== 1 || pending == null) return;
+      bindings[pending] = key; save();
+      const id = pending; pending = null;
+      render();
+      document.getElementById('legend').textContent = '已保存：' + nameOf(id) + ' → ' + key;
+      return;
+    }
+    const key = e.key.toUpperCase();
+    if (e.repeat || key.length !== 1) return;
+    const m = keyToMidi(key);
+    if (m == null) return;
+    e.preventDefault(); playNote(m);
+  });
+
+  render();
 })();
 </script>
 </body>

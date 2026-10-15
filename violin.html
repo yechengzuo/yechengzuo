@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>小提琴 · Neon Violin</title>
+<style>
+  :root { --cyan: #00f0ff; --magenta: #ff2ec4; --yellow: #ffe14d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    overflow: hidden;
+    background-color: #05060f;
+    background-image:
+      linear-gradient(rgba(0,240,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,.05) 1px, transparent 1px),
+      radial-gradient(900px 520px at 20% -10%, rgba(20,40,120,.5), transparent 60%),
+      radial-gradient(900px 520px at 110% 115%, rgba(120,20,90,.45), transparent 60%);
+    background-size: 46px 46px, 46px 46px, auto, auto;
+    color: #dff8ff;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px); }
+  .back { position: fixed; top: 18px; left: 18px; z-index: 6; padding: 8px 16px; font-size: 14px; letter-spacing: .12em;
+    color: #bffcff; text-decoration: none; border: 1px solid rgba(0,240,255,.6); background: rgba(0,240,255,.08);
+    text-shadow: 0 0 8px rgba(0,240,255,.7); transition: all .25s ease; }
+  .back:hover { color: #fff; background: rgba(0,240,255,.18); box-shadow: 0 0 18px rgba(0,240,255,.5); }
+  main { position: fixed; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 1rem; }
+  .kicker { font-size: .78rem; letter-spacing: .5em; text-indent: .5em; color: var(--cyan); text-shadow: 0 0 10px rgba(0,240,255,.6); margin-bottom: .7rem; }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); letter-spacing: .2em; text-indent: .2em; color: #fff;
+    text-shadow: 0 0 10px rgba(0,240,255,.95), 0 0 34px rgba(0,240,255,.55), 3px 0 0 rgba(255,46,196,.5); }
+  .sub { margin-top: .6rem; font-size: .82rem; letter-spacing: .22em; text-indent: .22em; color: rgba(160,225,255,.9); }
+
+  .string-line { width: min(92vw, 720px); height: 6px; margin-top: 1.6rem; background: linear-gradient(90deg, transparent, rgba(200,180,140,.7), transparent); border-radius: 3px; box-shadow: 0 0 12px rgba(200,180,140,.4); }
+  .vkeys { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; max-width: 760px; margin-top: 1rem; }
+  .vkey { width: 46px; padding: .7rem 0 .5rem; border-radius: 50% 50% 6px 6px; cursor: pointer; text-align: center;
+    border: 1px solid rgba(255,46,196,.45); background: rgba(255,46,196,.07); transition: all .12s ease; }
+  .vkey:active, .vkey.active { background: rgba(255,46,196,.2); box-shadow: 0 0 16px rgba(255,46,196,.7); transform: translateY(2px); }
+  .vkey .nm { display: block; font-size: .78rem; color: rgba(223,248,255,.9); }
+  .vkey .kb { display: block; margin-top: .25rem; font-family: Consolas, monospace; font-size: .85rem; color: var(--cyan); text-shadow: 0 0 8px rgba(0,240,255,.7); }
+  .vkey.pending { outline: 2px solid var(--yellow); box-shadow: 0 0 20px rgba(255,225,77,.8); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: .8rem; justify-content: center; margin-top: 1.6rem; }
+  .ctl { padding: .55rem 1.3rem; font-size: .9rem; letter-spacing: .12em; color: #bffcff; border: 1px solid rgba(0,240,255,.5);
+    background: rgba(0,240,255,.06); cursor: pointer; border-radius: 4px; transition: all .2s ease; }
+  .ctl:hover { background: rgba(0,240,255,.15); box-shadow: 0 0 14px rgba(0,240,255,.45); }
+  .ctl.on { color: #fff; background: rgba(255,46,196,.2); border-color: var(--magenta); box-shadow: 0 0 16px rgba(255,46,196,.6); }
+  .legend { margin-top: 1rem; font-family: Consolas, monospace; font-size: .76rem; letter-spacing: .08em; color: rgba(150,225,255,.85); line-height: 1.8; max-width: 92vw; }
+  footer { position: fixed; bottom: 1.3rem; left: 0; right: 0; z-index: 3; text-align: center; font-size: .7rem;
+    letter-spacing: .24em; text-indent: .24em; color: rgba(170,225,255,.75); }
+  @media (max-width: 860px) { footer { display: none; } }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<a class="back" href="music.html">← 返回乐器</a>
+<main>
+  <p class="kicker">NEON VIOLIN</p>
+  <h1>小提琴</h1>
+  <p class="sub">点击音符或按对应键盘键拉奏</p>
+
+  <div class="string-line"></div>
+  <div class="vkeys" id="vkeys"></div>
+
+  <div class="controls">
+    <button class="ctl" id="remap">⌨ 改键位</button>
+    <button class="ctl" id="demo">♫ 试听</button>
+  </div>
+  <p class="legend" id="legend"></p>
+</main>
+<footer>© 2026 YECHENGZUO · PLAY THE NEON</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const nameOf = m => NOTE_NAMES[m % 12] + Math.floor(m / 12 - 1);
+  const NOTES = [60,62,64,65,67,69,71,72,74,76,77,79,81,83];
+  const DEFAULT = { 60:'Z',62:'X',64:'C',65:'V',67:'B',69:'N',71:'M',72:'Q',74:'W',76:'E',77:'R',79:'T',81:'Y',83:'U' };
+  const KEY = 'bindings-violin';
+
+  function load() { try { const b = JSON.parse(localStorage.getItem(KEY) || '{}'); const o = Object.assign({}, DEFAULT); for (const k in b) o[k] = b[k]; return o; } catch (e) { return Object.assign({}, DEFAULT); } }
+  let bindings = load();
+  function save() { localStorage.setItem(KEY, JSON.stringify(bindings)); }
+
+  let remapMode = false, pending = null;
+  let actx = null, master = null, delay = null, delayGain = null;
+
+  function audioInit() {
+    if (actx) return;
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = 0.8; master.connect(actx.destination);
+    delay = actx.createDelay(1); delay.delayTime.value = 0.28;
+    delayGain = actx.createGain(); delayGain.gain.value = 0.3;
+    master.connect(delay); delay.connect(delayGain); delayGain.connect(delay); delayGain.connect(actx.destination);
+  }
+
+  function playNote(midi) {
+    try {
+      audioInit();
+      const f = 440 * Math.pow(2, (midi - 69) / 12), t = actx.currentTime;
+      const o = actx.createOscillator(), g = actx.createGain(), flt = actx.createBiquadFilter();
+      const lfo = actx.createOscillator(), lg = actx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = f;
+      flt.type = 'lowpass'; flt.frequency.value = 2400;
+      lfo.frequency.value = 5.5; lg.gain.value = 3.5;
+      lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.28, t + 0.14);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+      o.connect(flt); flt.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 1.6); lfo.start(t); lfo.stop(t + 1.6);
+    } catch (e) { /* 静音 */ }
+  }
+
+  function render() {
+    const box = document.getElementById('vkeys');
+    box.innerHTML = '';
+    NOTES.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'vkey'; el.dataset.midi = m;
+      el.innerHTML = '<span class="nm">' + nameOf(m) + '</span><span class="kb">' + (bindings[m] || '?') + '</span>';
+      el.addEventListener('pointerdown', () => {
+        if (remapMode) { pending = m; document.querySelectorAll('.pending').forEach(e => e.classList.remove('pending')); el.classList.add('pending'); updateLegend(); return; }
+        el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 200);
+        playNote(m);
+      });
+      box.appendChild(el);
+    });
+    updateLegend();
+  }
+
+  function updateLegend() {
+    const l = document.getElementById('legend');
+    l.textContent = remapMode
+      ? (pending != null ? '已选中「' + nameOf(pending) + '」，请按新键位（Esc 取消）' : '点击一个音符，再按新键位（Esc 退出）')
+      : '键位 Z X C V B N M / Q W E R T Y U';
+  }
+
+  const remapBtn = document.getElementById('remap');
+  remapBtn.addEventListener('click', () => { remapMode = !remapMode; pending = null; remapBtn.classList.toggle('on', remapMode); updateLegend(); });
+
+  document.getElementById('demo').addEventListener('click', () => {
+    [69,72,76,79,81,79,76,72,71,72,76,72].forEach((m, i) => setTimeout(() => playNote(m), i * 210));
+  });
+
+  function keyToMidi(key) { for (const id of Object.keys(bindings)) if (bindings[id] === key) return Number(id); return null; }
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Escape') { remapMode = false; pending = null; remapBtn.classList.remove('on'); updateLegend(); return; }
+    if (remapMode) {
+      const key = e.key.toUpperCase();
+      if (key.length !== 1 || pending == null) return;
+      bindings[pending] = key; save();
+      const id = pending; pending = null;
+      render();
+      document.getElementById('legend').textContent = '已保存：' + nameOf(id) + ' → ' + key;
+      return;
+    }
+    const key = e.key.toUpperCase();
+    if (e.repeat || key.length !== 1) return;
+    const m = keyToMidi(key);
+    if (m == null) return;
+    e.preventDefault(); playNote(m);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#05060f">
-<meta name="site-version" content="1.9">
+<meta name="site-version" content="2.1">
 <title>yechengzuo 的个人网站</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
 <style>
@@ -276,13 +276,13 @@
   <p class="status" id="status"></p>
   <div class="entry-row">
     <a class="game-btn" href="games.html">小游戏</a>
-    <a class="game-btn btn-music" href="piano.html">乐器</a>
+    <a class="game-btn btn-music" href="music.html">乐器</a>
     <a class="game-btn btn-draw" href="draw.html">绘图</a>
   </div>
   <p class="hint">ARCADE · PIANO · SKETCH</p>
 </main>
 <footer>
-  <p>© 2026 YECHENGZUO · ENTER THE GRID · v1.9</p>
+  <p>© 2026 YECHENGZUO · ENTER THE GRID · v2.1</p>
   <p class="counter">本站已被访问 <span id="busuanzi_value_site_pv">--</span> 次 · <span id="busuanzi_value_site_uv">--</span> 位访客</p>
 </footer>
 
@@ -425,7 +425,7 @@
 <script>
 (function () {
   /* 自动更新检测：每分钟自查一次线上版本，发现新版就自动刷新，省去手动 Ctrl+F5 */
-  var VER = "1.9";
+  var VER = "2.1";
   function check() {
     fetch("index.html?t=" + Date.now(), { cache: "no-store" })
       .then(function (r) { return r.text(); })
