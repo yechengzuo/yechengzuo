@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#05060f">
-<meta name="site-version" content="1.8">
+<meta name="site-version" content="1.9">
 <title>yechengzuo 的个人网站</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%2300f0ff' stroke-width='2.5'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23ff2ec4'/%3E%3C/svg%3E">
 <style>
@@ -159,6 +159,46 @@
   }
   .game-btn:active { transform: translateY(0); }
 
+  /* 三个入口：居中、等宽、上下排布 */
+  .entry-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2.6rem;
+  }
+
+  .entry-row .game-btn {
+    margin-top: 0;
+    width: min(76vw, 300px);
+    padding: 0.9rem 0;
+    text-align: center;
+  }
+
+  .btn-music {
+    border-color: var(--magenta);
+    color: #ffc9ee;
+    background: rgba(255,46,196,0.06);
+    box-shadow: 0 0 18px rgba(255,46,196,0.4), inset 0 0 18px rgba(255,46,196,0.1);
+    text-shadow: 0 0 8px rgba(255,46,196,0.8);
+  }
+  .btn-music:hover {
+    background: rgba(255,46,196,0.16);
+    box-shadow: 0 0 36px rgba(255,46,196,0.8), inset 0 0 26px rgba(255,46,196,0.25);
+  }
+
+  .btn-draw {
+    border-color: #7dffb0;
+    color: #d2ffe6;
+    background: rgba(87,255,154,0.06);
+    box-shadow: 0 0 18px rgba(87,255,154,0.4), inset 0 0 18px rgba(87,255,154,0.1);
+    text-shadow: 0 0 8px rgba(87,255,154,0.8);
+  }
+  .btn-draw:hover {
+    background: rgba(87,255,154,0.16);
+    box-shadow: 0 0 36px rgba(87,255,154,0.8), inset 0 0 26px rgba(87,255,154,0.25);
+  }
+
   /* 右上角：更新公告入口 */
   .news-link {
     position: fixed;
@@ -184,33 +224,6 @@
 
   @media (max-width: 640px) {
     .news-link { top: 12px; right: 12px; padding: 6px 12px; font-size: 12px; }
-  }
-
-  /* 左上角：绘画小工具入口 */
-  .draw-link {
-    position: fixed;
-    top: 18px;
-    left: 18px;
-    z-index: 4;
-    padding: 8px 16px;
-    font-size: 13px;
-    letter-spacing: 0.14em;
-    color: #bffcff;
-    text-decoration: none;
-    border: 1px solid rgba(0,240,255,0.5);
-    background: rgba(0,240,255,0.06);
-    text-shadow: 0 0 8px rgba(0,240,255,0.6);
-    transition: all 0.25s ease;
-  }
-
-  .draw-link:hover {
-    color: #ffffff;
-    background: rgba(0,240,255,0.16);
-    box-shadow: 0 0 18px rgba(0,240,255,0.5);
-  }
-
-  @media (max-width: 640px) {
-    .draw-link { top: 12px; left: 12px; padding: 6px 12px; font-size: 12px; }
   }
 
   .hint {
@@ -257,16 +270,19 @@
 <div class="scanlines"></div>
 <div class="crt"></div>
 <a class="news-link" href="changelog.html">✧ 更新公告</a>
-<a class="draw-link" href="draw.html">✎ 绘画小工具</a>
 <main>
   <p class="kicker">WELCOME TO YECHENGZUO'S WEBSITE</p>
   <h1>欢迎来到<span class="name">yechengzuo</span>的个人网站</h1>
   <p class="status" id="status"></p>
-  <a class="game-btn" href="games.html">自制小游戏</a>
-  <p class="hint">NEON ARCADE · 霓虹街机厅</p>
+  <div class="entry-row">
+    <a class="game-btn" href="games.html">小游戏</a>
+    <a class="game-btn btn-music" href="piano.html">乐器</a>
+    <a class="game-btn btn-draw" href="draw.html">绘图</a>
+  </div>
+  <p class="hint">ARCADE · PIANO · SKETCH</p>
 </main>
 <footer>
-  <p>© 2026 YECHENGZUO · ENTER THE GRID · v1.8</p>
+  <p>© 2026 YECHENGZUO · ENTER THE GRID · v1.9</p>
   <p class="counter">本站已被访问 <span id="busuanzi_value_site_pv">--</span> 次 · <span id="busuanzi_value_site_uv">--</span> 位访客</p>
 </footer>
 
@@ -409,7 +425,7 @@
 <script>
 (function () {
   /* 自动更新检测：每分钟自查一次线上版本，发现新版就自动刷新，省去手动 Ctrl+F5 */
-  var VER = "1.8";
+  var VER = "1.9";
   function check() {
     fetch("index.html?t=" + Date.now(), { cache: "no-store" })
       .then(function (r) { return r.text(); })
